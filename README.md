@@ -1,4 +1,9 @@
 # Pink Sweets Rosy Future
+## To Do
+1. update warning page
+2. update title page and separate the press start from the rest
+3. update title page and remove sale by ami
+4. update HUD and make the boss health as a bar and explore rank and timer placements
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
