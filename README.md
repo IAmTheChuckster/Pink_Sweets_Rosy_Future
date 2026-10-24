@@ -29,28 +29,28 @@ I did all the testing and planning.
 | | CRC32 |
 |---|---|
 | Original `pinkswts_u4` (required) | `5d812c9e` |
-| Patched `pinkswts_u4` | `1d5f4e62` |
+| Patched `pinkswtsfe_u4` | `1d5f4e62` |
 
-Only `pinkswts_u4` changes. `pinkswts_u2`, `u23` and `u24` stay as they are.
+Only the u4 changes: the patched program is saved as `pinkswtsfe_u4` in `pinkswtsfe.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsfe.zip` with `Pink Sweets Forever.mra` (in [`mister/`](mister/), also offered by both patchers).
 
 ### Web patcher
 
 Open the **[Pink Sweets Rosy Future Patcher](https://iamthechuckster.github.io/Pink_Sweets_Rosy_Future/)** and drop in `pinkswts.zip` (the 4 files only, no subfolders). You can also drop a loose `pinkswts_u4`.
 
-The page checks that `pinkswts_u4` is the original and that the result is `1d5f4e62` before offering `pinkswts.zip` (full set with `pinkswts_u4` replaced), `pinkswts_u4.zip` or the raw `pinkswts_u4`. Everything runs in your browser and nothing is uploaded.
+The page checks that `pinkswts_u4` is the original and that the result is `1d5f4e62` before offering `pinkswtsfe.zip` (full set with the patched `pinkswtsfe_u4`), `pinkswtsfe_u4.zip`, the raw `pinkswtsfe_u4` and `Pink Sweets Forever.mra`. Everything runs in your browser and nothing is uploaded.
 
 ### Python patcher
 
 Python 3, standard library only. Repacking the game program takes about a minute.
 
 ```
-python3 pinkswts_patch.py pinkswts.zip          # writes pinkswts_u4 next to the zip
-python3 pinkswts_patch.py pinkswts.zip --zip    # also writes pinkswts_patched.zip
-python3 pinkswts_patch.py pinkswts_u4           # patches a loose file -> pinkswts_u4_patched
+python3 pinkswts_patch.py pinkswts.zip          # writes pinkswtsfe_u4 next to the zip
+python3 pinkswts_patch.py pinkswts.zip --zip    # also writes pinkswtsfe.zip and Pink Sweets Forever.mra
+python3 pinkswts_patch.py pinkswts_u4           # patches a loose file -> pinkswtsfe_u4
 python3 pinkswts_patch.py pinkswts.zip -o OUT   # choose the output file
 ```
 
-MAME will warn about a wrong checksum for `pinkswts_u4`. That's expected. On real hardware, keep a backup of your original u4 before flashing.
+MAME will warn about a wrong checksum for the u4 (rename `pinkswtsfe_u4` to `pinkswts_u4` in a `pinkswts` set for MAME). That's expected. On real hardware, keep a backup of your original u4 before flashing.
 
 ## Testing
 This patch was tested with MAME 0.289 and [CV1k core for the MiSTer FPGA by Raki](https://www.patreon.com/c/ikamusume/posts)<br>
