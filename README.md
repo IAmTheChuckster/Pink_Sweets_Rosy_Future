@@ -7,7 +7,8 @@
 5. **arrange:** suck in medals when holding focus more than 2 seconds
 6. **arrange:** tweak rank, 1up adds 5, dying subtracks 3
 7. **arrange:** extends the same as dipsw
-8. add skills
+8. **arrange:** drop lipstick for extend score
+9. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
