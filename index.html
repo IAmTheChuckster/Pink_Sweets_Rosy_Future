@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Pink Sweets Patcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Saira+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one narrow column - header, three numbered steps (load, check, download), footer. */
+:root {
+  --bg: #f6f1f3; --surface: #ffffff; --sunken: #efe7ea; --fg: #22161b; --muted: #6e5b63;
+  --border: #e2d5da; --accent: #a3123c; --accent-fg: #ffffff; --accent-soft: #f7e3ea;
+  --ok: #1d7446; --ok-soft: #e1f1e7; --warn: #985600; --warn-soft: #f8ecd9; --err: #b3261e; --err-soft: #f9e2df;
+  --display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #130c0f; --surface: #1c1317; --sunken: #241a1e; --fg: #f3e8ec; --muted: #b19aa3;
+  --border: #3a2a31; --accent: #ff5c86; --accent-fg: #1a0a10; --accent-soft: #3a1622;
+  --ok: #5ccf8d; --ok-soft: #12301f; --warn: #f0b35a; --warn-soft: #3a2a10; --err: #ff8a80; --err-soft: #3d1614;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #130c0f; --surface: #1c1317; --sunken: #241a1e; --fg: #f3e8ec; --muted: #b19aa3;
+  --border: #3a2a31; --accent: #ff5c86; --accent-fg: #1a0a10; --accent-soft: #3a1622;
+  --ok: #5ccf8d; --ok-soft: #12301f; --warn: #f0b35a; --warn-soft: #3a2a10; --err: #ff8a80; --err-soft: #3d1614;
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(34px, 7vw, 52px)/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.privacy { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.card h2 { display: flex; align-items: baseline; gap: 12px; margin: 0; font: 700 22px/1.1 var(--display); text-transform: uppercase; letter-spacing: .03em; }
+.card h2 .n { font: 700 34px/1 var(--display); color: var(--accent); }
+.drop { position: relative; border: 2px dashed var(--border); border-radius: 10px; background: var(--sunken); padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.drop strong { font-weight: 600; }
+.drop .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.loaded { font: 13px/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.tablebox { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font: 500 11px/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.mono, .mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+td .role { display: block; color: var(--muted); font-size: 12px; }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font: 500 12px/1.6 var(--mono); white-space: nowrap; background: var(--sunken); color: var(--muted); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.err { background: var(--err-soft); color: var(--err); }
+.msg { margin: 0; font-size: 14px; }
+.msg.err { color: var(--err); } .msg.ok { color: var(--ok); }
+.progress { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+button { font: 600 14px/1 var(--body); padding: 11px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+button.secondary { background: transparent; color: var(--accent); font-family: var(--mono); font-weight: 500; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.adds { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.adds b { font-weight: 600; }
+footer { color: var(--muted); font-size: 13px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Pink Sweets · Cave CV1000 · Rosy Future</div>
+    <h1>Pink Sweets Patcher</h1>
+    <div class="privacy"><span class="dot"></span>Everything runs in your browser. Your ROMs are never uploaded.</div>
+  </header>
+
+  <section class="card">
+    <h2><span class="n">1</span>Load your romset</h2>
+    <label class="drop" id="drop">
+      <input type="file" id="file" multiple>
+      <strong>Drop pinkswts.zip here, or click to choose.</strong>
+      <div class="sub">A loose pinkswts_u4 file works too.</div>
+    </label>
+    <div class="loaded" id="loaded">No files loaded.</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span>Check files</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>File</th><th>Size</th><th>Expected CRC32</th><th>Found CRC32</th><th>Status</th></tr></thead>
+      <tbody id="inrows"></tbody>
+    </table></div>
+    <p class="msg" id="checkmsg"></p>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span>Download patched files</h2>
+    <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+    <div class="tablebox"><table>
+      <thead><tr><th>File</th><th>Expected CRC32</th><th>Built CRC32</th><th>Status</th></tr></thead>
+      <tbody><tr><td class="mono">pinkswts_u4<span class="role">Patched program ROM</span></td><td class="mono">2b1d0fb1</td><td class="mono" id="outcrc">—</td><td><span class="pill" id="outstatus">Waiting</span></td></tr></tbody>
+    </table></div>
+    <div class="buttons">
+      <button id="btnSet" disabled>Download patched pinkswts.zip</button>
+      <button id="btnU4zip" class="secondary" disabled>pinkswts_u4.zip</button>
+      <button id="btnU4" class="secondary" disabled hidden>pinkswts_u4</button>
+    </div>
+    <p class="hint" id="dlhint">pinkswts.zip is the full set for MAME with pinkswts_u4 replaced; pinkswts_u2, u23 and u24 are copied unchanged. For the real board, flash the pinkswts_u4 inside it. Back up your original u4 first.</p>
+    <p class="msg" id="dlmsg"></p>
+    <ul class="adds">
+      <li><b>ZAN counter:</b> the hidden 1UP counter (2500, kills lower it, bomb kills raise it), showing READY at 0.</li>
+      <li><b>Boss and midboss timer</b> and <b>boss health</b> in every boss and midboss fight, stages 1 to 7.</li>
+      <li><b>Rank meter</b> as RK with two decimals (100.00 is the hardest) in place of the 2P score.</li>
+      <li><b>Title menu</b> after a coin is in: ARCADE, HARDER, EXTENDED, SCORE ATTACK and ROSY'S ARRANGE (plays as Arcade for now). No button codes needed.</li>
+      <li><b>HUD layout:</b> ZAN, timer and health on the right under RK in Arcade, Harder and Extended; none in Score Attack or with 2 players.</li>
+      <li><b>Warning screen:</b> PINK SWEETS ROSY FUTURE, CAVE OWNS!!! and 2026/10/15 ROSY FUTURE.</li>
+    </ul>
+  </section>
+
+  <footer>No ROM data is included in this page. It only adds the patch code to the dump you supply.</footer>
+</div>
+
+<script id="core">
+// Pink Sweets u4 patch core. Runs in a Web Worker (or on the page as a fallback).
+// The game program in u4 is LZ-compressed: unpack it, patch it, pack it again.
+(function (G) {
+  const BLOB = 0x51000, BASE = 0x0C051000, HOOK = 0x100000;
+
+  function swap16(u8) { const o = new Uint8Array(u8.length); for (let i = 0; i < u8.length; i += 2) { o[i] = u8[i + 1]; o[i + 1] = u8[i]; } return o; }
+  const be32 = (u8, p) => ((u8[p] << 24) | (u8[p + 1] << 16) | (u8[p + 2] << 8) | u8[p + 3]) >>> 0;
+
+  function unpack(src) {
+    const outsize = be32(src, 0), ntok = be32(src, 4);
+    let fp = 12, dp = be32(src, 8), bits = 0, flag = 0, o = 0;
+    const out = new Uint8Array(outsize);
+    for (let t = 0; t < ntok; t++) {
+      if (bits === 0) { flag = src[fp++]; bits = 8; }
+      if (flag & 0x80) {
+        const w = (src[dp] << 8) | src[dp + 1]; dp += 2;
+        const ln = (w & 0x1f) + 3, dist = w >> 5;
+        for (let k = 0; k < ln; k++, o++) out[o] = out[o - dist];
+      } else out[o++] = src[dp++];
+      flag = (flag << 1) & 0xff; bits--;
+    }
+    if (o !== outsize) throw new Error("The program unpacked to the wrong size.");
+    return { data: out, end: dp };
+  }
+
+  // Optimal parse (literal 9 bits, match 17 bits). Same algorithm as the Python build tools.
+  function pack(data, progress) {
+    const n = data.length, MAXD = 2047, MAXL = 34;
+    const head = new Map();
+    const mStart = new Int32Array(n + 1), mL = [], mD = [];
+    for (let i = 0; i < n; i++) {
+      mStart[i] = mL.length;
+      if (i + 3 <= n) {
+        const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+        let lst = head.get(key); if (!lst) { lst = []; head.set(key, lst); }
+        let bl = 0;
+        const mx = Math.min(MAXL, n - i);
+        for (let q = lst.length - 1; q >= 0; q--) {
+          const j = lst[q], d = i - j;
+          if (d > MAXD) break;
+          let l = 3; while (l < mx && data[j + l] === data[i + l]) l++;
+          if (l > bl) { bl = l; mL.push(l); mD.push(d); }
+          if (l === MAXL) break;
+        }
+        lst.push(i);
+        if (lst.length > 4096) lst.splice(0, 2048);
+      }
+      if (progress && (i & 0xffff) === 0) progress(0.75 * i / n);
+    }
+    mStart[n] = mL.length;
+    const cost = new Float64Array(n + 1), chL = new Int32Array(n), chD = new Int32Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+      let c = cost[i + 1] + 9, L0 = 1, D0 = 0, prev = 3;
+      for (let k = mStart[i]; k < mStart[i + 1]; k++) {
+        const l = mL[k], d = mD[k];
+        for (let L = prev; L <= l; L++) { const cc = cost[i + L] + 17; if (cc < c) { c = cc; L0 = L; D0 = d; } }
+        prev = l + 1;
+      }
+      cost[i] = c; chL[i] = L0; chD[i] = D0;
+      if (progress && (i & 0xffff) === 0) progress(0.75 + 0.2 * (n - i) / n);
+    }
+    const flags = [], stream = [];
+    for (let i = 0; i < n;) {
+      if (chD[i] === 0) { stream.push(data[i]); flags.push(0); i++; }
+      else { const w = (chD[i] << 5) | (chL[i] - 3); stream.push(w >> 8, w & 0xff); flags.push(1); i += chL[i]; }
+    }
+    const nfb = (flags.length + 7) >> 3, out = new Uint8Array(12 + nfb + stream.length);
+    const put32 = (p, v) => { out[p] = v >>> 24; out[p + 1] = (v >>> 16) & 255; out[p + 2] = (v >>> 8) & 255; out[p + 3] = v & 255; };
+    put32(0, n); put32(4, flags.length); put32(8, 12 + nfb);
+    for (let k = 0; k < flags.length; k++) if (flags[k]) out[12 + (k >> 3)] |= 0x80 >> (k & 7);
+    out.set(stream, 12 + nfb);
+    return out;
+  }
+
+  const fromHex = h => { const o = new Uint8Array(h.length / 2); for (let i = 0; i < o.length; i++) o[i] = parseInt(h.substr(i * 2, 2), 16); return o; };
+
+  // u4 (as stored in the romset) -> patched u4. patch = { program: [[addrHex, newHex, expectHex]], hook: base64 }
+  function patchU4(u4, patch, progress) {
+    const be = swap16(u4);
+    const { data, end } = unpack(be.subarray(BLOB));
+    const game = new Uint8Array(data);
+    for (const [a, nh, eh] of patch.program) {
+      const o = parseInt(a, 16) - BASE, nb = fromHex(nh), eb = fromHex(eh);
+      for (let k = 0; k < eb.length; k++) if (game[o + k] !== eb[k]) throw new Error("Unexpected program bytes at " + a + ".");
+      game.set(nb, o);
+    }
+    const blob = pack(game, progress);
+    const origLen = end;
+    if (blob.length > origLen) throw new Error("The patched program doesn't fit.");
+    const chk = unpack(blob).data;
+    for (let k = 0; k < game.length; k++) if (chk[k] !== game[k]) throw new Error("Repacking check failed.");
+    be.set(blob, BLOB); be.fill(0xff, BLOB + blob.length, BLOB + origLen);
+    const hook = Uint8Array.from(atob(patch.hook), c => c.charCodeAt(0));
+    for (let k = 0; k < hook.length; k++) if (be[HOOK + k] !== 0xff) throw new Error("The free space for the new code isn't empty.");
+    be.set(hook, HOOK);
+    return swap16(be);
+  }
+
+  G.PinkCore = { patchU4 };
+  if (typeof document === "undefined" && typeof postMessage === "function" && typeof module === "undefined") {
+    onmessage = e => {
+      try {
+        let last = -1;
+        const out = patchU4(e.data.u4, e.data.patch, p => { const r = Math.round(p * 100); if (r !== last) { last = r; postMessage({ progress: p }); } });
+        postMessage({ out }, [out.buffer]);
+      } catch (err) { postMessage({ error: err.message || String(err) }); }
+    };
+  }
+  if (typeof module !== "undefined") module.exports = { patchU4 };
+})(typeof self !== "undefined" ? self : globalThis);
+</script>
+<script>
+(() => {
+  const ORIG_CRC = 0x5d812c9e, PATCHED_CRC = 0x2b1d0fb1, U4_SIZE = 0x200000;
+  // Only the new patch code: program changes as [CPU address, new bytes, expected original bytes], plus the new routines.
+  const PATCH = {"program":[["0c0720ec","a0100000","0c078f80"],["0c06e64a","d002400b0009a0130009a010049800090009000900090009000900090009000900090009000900090009000900090009","d24d6020c933"],["0c0754a0","d001402b00090009a01006f0","d525992e605304bc0b97d018"],["0c1066f4","20202050494e4b2053574545545320524f535920465554555245202020200020202020202020202043415645204f574e5321212120202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020202020202020202020202020202020202020202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020202020202020202020202020202020202020202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020202020202020202020202020202020202020202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020323032362f31302f313520524f5359204655545552452020202000",""],["0c1068a6","20202050494e4b2053574545545320524f535920465554555245202020200020202020202020202043415645204f574e5321212120202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020202020202020202020202020202020202020202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020202020202020202020202020202020202020202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020202020202020202020202020202020202020202020202020202000202020202020202020202020202020202020202020202020202020202020002020202020202020202020202020202020202020202020202020202020200020202020323032362f31302f313520524f5359204655545552452020202000",""],["0c0703d2","0009","430b"],["0c0703e2","0009","4a0b"],["0c0703f0","0009","480b"]],"hook":"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"};
+  const SET = [
+    { name: "pinkswts_u4", size: 0x200000,  crc: 0x5d812c9e, role: "Patched" },
+    { name: "pinkswts_u2", size: 138412032, crc: 0xa2fa5363, role: "Copied unchanged" },
+    { name: "u23",         size: 0x400000,  crc: 0x4b82d250, role: "Copied unchanged" },
+    { name: "u24",         size: 0x400000,  crc: 0xe93f0627, role: "Copied unchanged" },
+  ];
+  const $ = id => document.getElementById(id);
+  const hex = n => (n >>> 0).toString(16).padStart(8, "0");
+  const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(n % 1048576 ? 1 : 0) + " MB" : (n / 1024).toFixed(0) + " KB";
+
+  const CRC_T = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; CRC_T[i] = c >>> 0; }
+  function crc32(u8, crc = 0) { crc = ~crc >>> 0; for (let i = 0; i < u8.length; i++) crc = CRC_T[(crc ^ u8[i]) & 255] ^ (crc >>> 8); return ~crc >>> 0; }
+
+  async function inflateRaw(u8) {
+    if (typeof DecompressionStream === "undefined") throw new Error("This browser can't unzip files. Use a current Chrome, Edge, Firefox or Safari, or unzip the set and drop pinkswts_u4 on its own.");
+    const s = new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  }
+  async function deflateRaw(u8) {
+    if (typeof CompressionStream === "undefined") return null;
+    const s = new Blob([u8]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  }
+
+  function readZip(buf) {
+    const u8 = new Uint8Array(buf), dv = new DataView(buf);
+    let eocd = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error("This file isn't a readable zip.");
+    const count = dv.getUint16(eocd + 10, true), cdOff = dv.getUint32(eocd + 16, true);
+    if (count === 0xffff || cdOff === 0xffffffff) throw new Error("Zip64 archives aren't supported. Re-zip the set normally.");
+    const entries = []; let p = cdOff;
+    for (let n = 0; n < count; n++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) throw new Error("The zip's directory is damaged.");
+      const e = {
+        flags: dv.getUint16(p + 8, true), method: dv.getUint16(p + 10, true),
+        time: dv.getUint16(p + 12, true), date: dv.getUint16(p + 14, true),
+        crc: dv.getUint32(p + 16, true), csize: dv.getUint32(p + 20, true), usize: dv.getUint32(p + 24, true),
+      };
+      const fl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+      e.lho = dv.getUint32(p + 42, true);
+      e.nameBytes = u8.slice(p + 46, p + 46 + fl);
+      e.name = new TextDecoder().decode(e.nameBytes);
+      if (e.csize === 0xffffffff || e.usize === 0xffffffff || e.lho === 0xffffffff) throw new Error("Zip64 archives aren't supported. Re-zip the set normally.");
+      const lfl = dv.getUint16(e.lho + 26, true), lxl = dv.getUint16(e.lho + 28, true);
+      e.dataStart = e.lho + 30 + lfl + lxl;
+      e.raw = () => u8.subarray(e.dataStart, e.dataStart + e.csize);
+      entries.push(e); p += 46 + fl + xl + cl;
+    }
+    return entries;
+  }
+
+  function buildZip(items) {
+    // items: {nameBytes, method, crc, csize, usize, time, date, data(Uint8Array compressed)}
+    const parts = [], central = []; let off = 0;
+    for (const it of items) {
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true);
+      lh.setUint16(8, it.method, true); lh.setUint16(10, it.time, true); lh.setUint16(12, it.date, true);
+      lh.setUint32(14, it.crc, true); lh.setUint32(18, it.csize, true); lh.setUint32(22, it.usize, true);
+      lh.setUint16(26, it.nameBytes.length, true); lh.setUint16(28, 0, true);
+      parts.push(lh.buffer, it.nameBytes, it.data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0, true);
+      ch.setUint16(10, it.method, true); ch.setUint16(12, it.time, true); ch.setUint16(14, it.date, true);
+      ch.setUint32(16, it.crc, true); ch.setUint32(20, it.csize, true); ch.setUint32(24, it.usize, true);
+      ch.setUint16(28, it.nameBytes.length, true); ch.setUint32(42, off, true);
+      central.push(ch.buffer, it.nameBytes);
+      off += 30 + it.nameBytes.length + it.data.length;
+    }
+    const cdSize = central.reduce((s, b) => s + (b.byteLength ?? b.length), 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, items.length, true); end.setUint16(10, items.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+    return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
+  }
+
+  const state = { entries: null, u4Entry: null, loose: {}, patched: null };
+  const base = n => n.split(/[\\/]/).pop().toLowerCase();
+  const bar = v => { $("bar").style.width = Math.round(v * 100) + "%"; };
+
+  function pill(cls, text) { return `<span class="pill ${cls}">${text}</span>`; }
+  function renderIn(found) {
+    $("inrows").innerHTML = SET.map(s => {
+      const f = found[s.name];
+      let status = pill("", "Waiting"), crcTxt = "—";
+      if (f) {
+        crcTxt = f.crc == null ? "—" : hex(f.crc);
+        if (f.size !== s.size) status = pill("err", "Wrong size");
+        else if (s.name === "pinkswts_u4" && f.crc === PATCHED_CRC) status = pill("warn", "Already patched");
+        else if (f.crc !== s.crc) status = pill("err", "Wrong CRC");
+        else status = pill("ok", "OK");
+      } else if (state.entries || Object.keys(state.loose).length) status = s.name === "pinkswts_u4" ? pill("err", "Missing") : pill("", "Not in input");
+      return `<tr><td class="mono">${s.name}<span class="role">${s.role}</span></td><td class="mono">${fmtSize(s.size)}</td><td class="mono">${hex(s.crc)}</td><td class="mono">${crcTxt}</td><td>${status}</td></tr>`;
+    }).join("");
+  }
+  renderIn({});
+
+  function resetOut() {
+    state.patched = null; bar(0);
+    $("outcrc").textContent = "—"; $("outstatus").className = "pill"; $("outstatus").textContent = "Waiting";
+    ["btnSet", "btnU4zip", "btnU4"].forEach(id => $(id).disabled = true);
+    $("checkmsg").textContent = ""; $("checkmsg").className = "msg"; $("dlmsg").textContent = "";
+  }
+  function fail(msg) { $("checkmsg").textContent = msg; $("checkmsg").className = "msg err"; bar(0); }
+
+  // Unpacking and repacking the program takes a few seconds, so it runs in a worker when possible.
+  function runPatch(u4) {
+    const onProgress = p => bar(.5 + .5 * p);
+    return new Promise((resolve, reject) => {
+      let w = null;
+      try { w = new Worker(URL.createObjectURL(new Blob([$("core").textContent], { type: "text/javascript" }))); } catch (e) { w = null; }
+      if (!w) {
+        setTimeout(() => { try { resolve(PinkCore.patchU4(u4, PATCH, null)); } catch (err) { reject(err); } }, 30);
+        return;
+      }
+      w.onmessage = e => {
+        if (e.data.progress != null) onProgress(e.data.progress);
+        else { w.terminate(); e.data.error ? reject(new Error(e.data.error)) : resolve(e.data.out); }
+      };
+      w.onerror = e => { w.terminate(); try { resolve(PinkCore.patchU4(u4, PATCH, null)); } catch (err) { reject(err); } };
+      w.postMessage({ u4, patch: PATCH });
+    });
+  }
+
+  async function load(files) {
+    resetOut();
+    state.entries = null; state.u4Entry = null; state.loose = {};
+    const found = {}; let u4data = null;
+    $("loaded").textContent = files.map(f => f.name + " (" + fmtSize(f.size) + ")").join(", ");
+    try {
+      for (const f of files) {
+        const head = new Uint8Array(await f.slice(0, 4).arrayBuffer());
+        if (head[0] === 0x50 && head[1] === 0x4b) {
+          const buf = await f.arrayBuffer(); bar(.2);
+          const entries = readZip(buf); state.entries = entries;
+          for (const e of entries) {
+            const nm = base(e.name);
+            const spec = SET.find(s => s.name === nm) || SET.find(s => s.size === e.usize && (s.crc === e.crc || (s.name === "pinkswts_u4" && e.crc === PATCHED_CRC)));
+            if (spec && !found[spec.name]) { found[spec.name] = { size: e.usize, crc: e.crc }; if (spec.name === "pinkswts_u4") state.u4Entry = e; }
+          }
+          if (state.u4Entry) {
+            const e = state.u4Entry;
+            u4data = e.method === 0 ? e.raw().slice() : e.method === 8 ? await inflateRaw(e.raw()) : null;
+            if (!u4data) throw new Error("pinkswts_u4 uses a compression method this page can't read. Re-zip the set normally.");
+            found.pinkswts_u4.crc = crc32(u4data); found.pinkswts_u4.size = u4data.length;
+          }
+        } else {
+          const nm = base(f.name);
+          const spec = SET.find(s => s.name === nm) || (f.size === U4_SIZE ? SET[0] : null);
+          if (spec && spec.name === "pinkswts_u4") { u4data = new Uint8Array(await f.arrayBuffer()); found.pinkswts_u4 = { size: u4data.length, crc: crc32(u4data) }; state.loose.pinkswts_u4 = true; }
+          else if (spec) { found[spec.name] = { size: f.size, crc: null }; state.loose[spec.name] = true; }
+        }
+      }
+    } catch (err) { renderIn(found); return fail(err.message); }
+    renderIn(found); bar(.5);
+    if (!u4data) return fail("No pinkswts_u4 found. Drop pinkswts.zip or the pinkswts_u4 file from it.");
+    if (u4data.length !== U4_SIZE) return fail("pinkswts_u4 is " + u4data.length.toLocaleString() + " bytes; the original is 2,097,152 bytes.");
+    const c = crc32(u4data);
+    if (c === PATCHED_CRC) return fail("This pinkswts_u4 is already patched (CRC 2b1d0fb1). Load the original dump instead.");
+    if (c !== ORIG_CRC) return fail("pinkswts_u4 CRC is " + hex(c) + ", not the original 5d812c9e. This patch only works on the original dump.");
+    $("checkmsg").textContent = "Original pinkswts_u4 found (CRC 5d812c9e). Unpacking, patching and repacking the program…"; $("checkmsg").className = "msg ok";
+
+    let out;
+    try { out = await runPatch(u4data); } catch (err) { return fail("Patching failed: " + err.message); }
+    const oc = crc32(out); bar(1);
+    $("outcrc").textContent = hex(oc);
+    if (oc !== PATCHED_CRC) { $("outstatus").className = "pill err"; $("outstatus").textContent = "Wrong CRC"; return fail("The patched pinkswts_u4 came out with CRC " + hex(oc) + " instead of 2b1d0fb1, so nothing was offered for download."); }
+    $("outstatus").className = "pill ok"; $("outstatus").textContent = "Matches Rosy Future";
+    $("checkmsg").textContent = "Original pinkswts_u4 found (CRC 5d812c9e) and patched.";
+    state.patched = out;
+    $("btnU4zip").disabled = false; $("btnU4").disabled = false;
+    $("btnSet").disabled = !state.entries;
+    if (!state.entries) $("dlmsg").textContent = "The full pinkswts.zip needs the original zip as input; you loaded a loose pinkswts_u4, so only the pinkswts_u4 download is available.";
+  }
+
+  const dosNow = () => ({ time: 0, date: (2026 - 1980) << 9 | 10 << 5 | 14 });
+  async function u4Item() {
+    const def = await deflateRaw(state.patched);
+    const t = dosNow();
+    const nameBytes = state.u4Entry ? state.u4Entry.nameBytes : new TextEncoder().encode("pinkswts_u4");
+    return def ? { nameBytes, method: 8, crc: PATCHED_CRC, csize: def.length, usize: U4_SIZE, time: t.time, date: t.date, data: def }
+               : { nameBytes, method: 0, crc: PATCHED_CRC, csize: U4_SIZE, usize: U4_SIZE, time: t.time, date: t.date, data: state.patched };
+  }
+  async function makeSet() {
+    const u4 = await u4Item(), items = [];
+    for (const e of state.entries) {
+      if (e === state.u4Entry) items.push(u4);
+      else items.push({ nameBytes: e.nameBytes, method: e.method, crc: e.crc, csize: e.csize, usize: e.usize, time: e.time, date: e.date, data: e.raw() });
+    }
+    return buildZip(items);
+  }
+
+  const inClaude = !!(window.claude && window.claude.use);
+  if (!inClaude) $("btnU4").hidden = false;
+  async function save(filename, blob) {
+    $("dlmsg").textContent = "";
+    if (inClaude) {
+      const dl = await window.claude.use("downloads");
+      if (!dl) { $("dlmsg").textContent = "Saving files isn't available in this view. Save this page as an HTML file and open it in your browser instead."; return; }
+      try { await dl.save({ filename, data: blob }); $("dlmsg").textContent = "Saved " + filename + "."; }
+      catch (err) { if (err && err.code !== "declined") $("dlmsg").textContent = "Couldn't save " + filename + ": " + (err.message || err.code); }
+    } else {
+      const url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+  }
+  $("btnSet").onclick = async () => { $("btnSet").disabled = true; try { await save("pinkswts.zip", await makeSet()); } finally { $("btnSet").disabled = false; } };
+  $("btnU4zip").onclick = async () => save("pinkswts_u4.zip", buildZip([await u4Item()]));
+  $("btnU4").onclick = () => save("pinkswts_u4", new Blob([state.patched], { type: "application/octet-stream" }));
+
+  const drop = $("drop"), input = $("file");
+  input.onchange = () => input.files.length && load([...input.files]);
+  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => { if (e.dataTransfer.files.length) load([...e.dataTransfer.files]); });
+})();
+</script>
+
+</body>
+</html>
