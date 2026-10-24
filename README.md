@@ -3,10 +3,11 @@
 1. update warning page
 2. update title page and separate the press start from the rest
 3. update title page and remove sale by ami
-4. suck in medals when holding focus more than 2 seconds
-5. update HUD and make the boss health as a bar and explore rank and timer placements
-6. tweak rank, 1up adds 5, dying subtracks 3
-7. add skills
+4. **all:** update HUD and make the boss health as a bar and explore rank and timer placements
+5. **arrange:** suck in medals when holding focus more than 2 seconds
+6. **arrange:** tweak rank, 1up adds 5, dying subtracks 3
+7. **arrange:** extends the same as dipsw
+8. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
