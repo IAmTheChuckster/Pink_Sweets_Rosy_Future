@@ -35,7 +35,7 @@ Only the u4 changes: the patched program is saved as `pinkswtsfe_u4` in `pinkswt
 
 ### Web patcher
 
-Open the **[Pink Sweets Rosy Future Patcher](https://iamthechuckster.github.io/Pink_Sweets_Rosy_Future/)** and drop in `pinkswts.zip` (the 4 files only, no subfolders). You can also drop a loose `pinkswts_u4`.
+Open the **[Pink Sweets Forever Patcher](https://iamthechuckster.github.io/Pink_Sweets_Forever/)** and drop in `pinkswts.zip` (the 4 files only, no subfolders). You can also drop a loose `pinkswts_u4`.
 
 The page checks that `pinkswts_u4` is the original and that the result is `1d5f4e62` before offering `pinkswtsfe.zip` (full set with the patched `pinkswtsfe_u4`), `pinkswtsfe_u4.zip`, the raw `pinkswtsfe_u4` and `Pink Sweets Forever.mra`. Everything runs in your browser and nothing is uploaded.
 
