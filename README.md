@@ -1,4 +1,4 @@
-# Pink Sweets Rosy Future
+# Pink Sweets Forever
 ## To Do
 1. update warning page
 2. update title page and separate the press start from the rest
