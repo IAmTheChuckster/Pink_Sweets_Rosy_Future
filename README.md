@@ -2,6 +2,8 @@
 
 ## Bugs
 1. investigate a possible bug with kasumi where it stopped in the Ruins but the song kept playing for a bit then the song stopped
+2. expand highscore to 9 digits
+3. 
 ## To Do
 1. update warning page
 2. update title page and separate the press start from the rest
@@ -13,8 +15,10 @@
 8. **Arrange:** extends the same as dipsw
 9. **Arrange:** drop lipstick for extend score
 10. **Arrange:** increase volume for medals that are collected
-11. **Arrange:** import hadougun from ibara
-12. add skills
+11. **Arrange:** add big boss's hadougun
+12. **Arrange:** dying adds hadougun
+13. **Arrange:** holding bomb for more than 2 seconds hadougun, releasing the button shoots it
+14. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
