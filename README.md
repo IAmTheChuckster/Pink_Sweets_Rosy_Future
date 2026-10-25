@@ -3,14 +3,15 @@
 1. update warning page
 2. update title page and separate the press start from the rest
 3. update title page and remove sale by ami
-4. **all:** update HUD and make the boss health as a bar and explore rank and timer placements
-5. **arrange:** suck in medals when holding focus more than 2 seconds
-6. **arrange:** tweak rank, 1up adds 5, dying subtracks 3
-7. **arrange:** extends the same as dipsw
-8. **arrange:** drop lipstick for extend score
-9. **arrange:** increase volume for medals that are collected
-10. **arrange:** import hadougun from ibara
-11. add skills
+4. **All:** update HUD and make the boss health as a bar and explore rank and timer placements
+5. **All** draw a transparent box around the boss health
+6. **Arrange:** suck in medals when holding focus more than 2 seconds
+7. **Arrange:** tweak rank, 1up adds 5, dying subtracks 3
+8. **Arrange:** extends the same as dipsw
+9. **Arrange:** drop lipstick for extend score
+10. **Arrange:** increase volume for medals that are collected
+11. **Arrange:** import hadougun from ibara
+12. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
