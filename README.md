@@ -9,7 +9,8 @@
 7. **arrange:** extends the same as dipsw
 8. **arrange:** drop lipstick for extend score
 9. **arrange:** increase volume for medals that are collected
-10. add skills
+10. **arrange:** import hadougun from ibara
+11. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
