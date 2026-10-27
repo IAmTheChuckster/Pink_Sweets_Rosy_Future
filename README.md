@@ -8,17 +8,18 @@
 1. update warning page
 2. update title page and separate the press start from the rest
 3. update title page and remove sale by ami
-4. **All:** update HUD and make the boss health as a bar and explore rank and timer placements
-5. **All** draw a transparent box around the boss health
-6. **Arrange:** suck in medals when holding focus more than 2 seconds
-7. **Arrange:** tweak rank, 1up adds 5, dying subtracks 3
-8. **Arrange:** extends the same as dipsw
-9. **Arrange:** drop lipstick for extend score
-10. **Arrange:** increase volume for medals that are collected
-11. **Arrange:** add big boss's hadougun
-12. **Arrange:** dying adds hadougun
-13. **Arrange:** holding bomb for more than 2 seconds hadougun, releasing the button shoots it
-14. add skills
+4. Update MRA files to include button names
+5. **All:** update HUD and make the boss health as a bar and explore rank and timer placements
+6. **All** draw a transparent box around the boss health
+7. **Arrange:** suck in medals when holding focus more than 2 seconds
+8. **Arrange:** tweak rank, 1up adds 5, dying subtracks 3
+9. **Arrange:** extends the same as dipsw
+10. **Arrange:** drop lipstick for extend score
+11. **Arrange:** increase volume for medals that are collected
+12. **Arrange:** add big boss's hadougun
+13. **Arrange:** dying adds hadougun
+14. **Arrange:** holding bomb for more than 2 seconds hadougun, releasing the button shoots it
+15. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
