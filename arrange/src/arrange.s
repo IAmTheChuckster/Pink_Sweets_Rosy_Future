@@ -824,7 +824,7 @@ arr_frame:
         mov.l   L3_meter,r0         ! tick-points fill the rose cracker meter
         jsr     @r0
         nop
-        mov.l   L3_magnet,r0        ! A held 2 s: cracker flowers fly to the ship
+        mov.l   L3_magnet,r0        ! louder-pickup countdown (the A-hold flower pull is off)
         jsr     @r0
         nop
         mov.l   L3_scap,r0          ! score stops at 4,294,967,295
@@ -1149,10 +1149,8 @@ arr_crkdmg:                         ! (the boss/midboss no-damage rule is gone: 
         mov.l   r7,@-r15
         mov.l   L8_kills,r6         ! one more enemy destroyed by the cracker:
         mov.l   @r6,r0              ! the chain's kill multiplier
-        .ifdef  STANDALONE
-        cmp/eq  #32,r0              ! (standalone: max x32; Pink Sweets Forever: no limit)
+        cmp/eq  #32,r0              ! max x32
         bt      .Lc_kmax
-        .endif
         add     #1,r0
         mov.l   r0,@r6
 .Lc_kmax:
@@ -3289,6 +3287,8 @@ magnet:
         add     #-1,r0
         mov.b   r0,@r1
 .Lg_nf:
+        rts                         ! flower pull switched off (2026-10-29)
+        nop
         mov.l   LGM_hold,r1
         mov.b   @r1,r0
         extu.b  r0,r0

@@ -33,7 +33,7 @@ I did all the testing and planning.
 - **Boss health.** Shown under the timer and counts down as the enemy takes damage.
 - **Rank meter.** Shows the hidden rank as **RK** with two decimals in place of the 2P score, for example `RK  19.37`. 100.00 is the hardest and the game starts at 18.75.
 - **Title menu.** After a coin is inserted, the title shows **ARCADE / HARDER / EXTENDED / SCORE ATTACK / ROSY'S ARRANGE**.
-  - ROSY'S ARRANGE plays **Pink Sweets Rosy Arrange** (1 player): Start goes to its own How to Play page, then the usual character select. It uses the Rosy Arrange rules and HUD (TYPE, RANK, rose cracker meter that fills from tick-points and shield cancels, weak/full rose cracker with a 2-second cooldown, flower chain, D or Start to change shot type). Differences from the standalone Rosy Arrange: extends follow the DIP setting (a lipstick 1UP drops from the top at each extend score), each extend raises RANK by 5 and each death lowers it by 3, the cracker kill multiplier has no limit, holding A (alone or with other buttons) for 2 seconds pulls the cracker flowers onto the ship, and the cracker flowers' pickup sound is 50% louder. See the [Rosy Arrange README](https://github.com/IAmTheChuckster/Pink-Sweets-Rosy-Arrange) for the full rules. The other four modes play exactly as before.
+  - ROSY'S ARRANGE plays **Pink Sweets Rosy Arrange** (1 player): Start goes to its own How to Play page, then the usual character select. It uses the Rosy Arrange rules and HUD (TYPE, RANK, rose cracker meter that fills from tick-points and shield cancels, weak/full rose cracker with a 2-second cooldown, flower chain, D or Start to change shot type). Differences from the standalone Rosy Arrange: extends follow the DIP setting (a lipstick 1UP drops from the top at each extend score), each extend raises RANK by 5, each death lowers it by 3, and the cracker flowers' pickup sound is 50% louder. See the [Rosy Arrange README](https://github.com/IAmTheChuckster/Pink-Sweets-Rosy-Arrange) for the full rules. The other four modes play exactly as before.
   - Move the arrow with the joystick and press Start.
   - Harder, Extended and Score Attack are unlocked, so the button codes aren't needed.
 - **HUD layout.**
@@ -47,7 +47,7 @@ I did all the testing and planning.
 | | CRC32 |
 |---|---|
 | Original `pinkswts_u4` (required) | `5d812c9e` |
-| Patched `pinkswtsfe_u4` | `c2a2b8a1` |
+| Patched `pinkswtsfe_u4` | `ee0b8723` |
 
 Only the u4 changes: the patched program is saved as `pinkswtsfe_u4` in `pinkswtsfe.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsfe.zip` with `Pink Sweets Forever.mra` (in [`mister/`](mister/), also offered by both patchers).
 
@@ -55,7 +55,7 @@ Only the u4 changes: the patched program is saved as `pinkswtsfe_u4` in `pinkswt
 
 Open the **[Pink Sweets Forever Patcher](https://iamthechuckster.github.io/Pink_Sweets_Forever/)** and drop in `pinkswts.zip` (the 4 files only, no subfolders). You can also drop a loose `pinkswts_u4`.
 
-The page checks that `pinkswts_u4` is the original and that the result is `c2a2b8a1` before offering `pinkswtsfe.zip` (full set with the patched `pinkswtsfe_u4`), `pinkswtsfe_u4.zip`, the raw `pinkswtsfe_u4` and `Pink Sweets Forever.mra`. Everything runs in your browser and nothing is uploaded.
+The page checks that `pinkswts_u4` is the original and that the result is `ee0b8723` before offering `pinkswtsfe.zip` (full set with the patched `pinkswtsfe_u4`), `pinkswtsfe_u4.zip`, the raw `pinkswtsfe_u4` and `Pink Sweets Forever.mra`. Everything runs in your browser and nothing is uploaded.
 
 ### Python patcher
 
