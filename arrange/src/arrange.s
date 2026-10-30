@@ -463,8 +463,8 @@ arr_input:
         not     r6,r6
         and     r3,r6               ! r6 = new presses
         .ifndef STANDALONE
-        ! HADOUGUN in stock: B fires the rose cracker on a tap (let go within
-        ! HG_TAP frames), on the release; a longer hold charges the HADOUGUN
+        ! HADOUGUN in stock: B fires the rose cracker when let go before the
+        ! HADOUGUN is ready (holding it charges); let go when ready: HADOUGUN
         mov.l   L2_stock,r1
         mov.b   @r1,r0
         tst     r0,r0
@@ -491,10 +491,11 @@ arr_input:
         bt      .Lbt_done
         mov     #0,r0
         mov.b   r0,@r1
-        mov     #HG_TAP,r0
-        cmp/hs  r0,r2
-        bt      .Lbt_done           ! a hold: nothing
-        mov     #0x20,r0            ! a tap: the B press happens now
+        mov.l   L2_hgs,r1           ! let go with the HADOUGUN ready: it fires,
+        mov.b   @r1,r0              ! no cracker
+        cmp/eq  #2,r0
+        bt      .Lbt_done
+        mov     #0x20,r0            ! let go before that: the B press happens now
         or      r0,r6
 .Lbt_done:
         .endif
@@ -801,6 +802,7 @@ L2_prev:    .long VAR_PREV
         .ifndef STANDALONE
 L2_stock:   .long VAR_HADOU
 L2_bhold:   .long VAR_BHOLD
+L2_hgs:     .long VAR_HGS
         .endif
 L2_latch:   .long VAR_LATCH
 L2_acc:     .long VAR_ACC
