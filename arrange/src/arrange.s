@@ -98,6 +98,7 @@
         .set    HG_NSHOT,   4
         .set    VAR_HFC,    0x0C7E0590      ! (u32) logic frame counter
         .set    VAR_HDRAWN, 0x0C7E0594      ! (u32) frame the effects were last drawn
+        .set    VAR_HGCD,   0x0C7E0600      ! 192 bytes: frames until the HADOUGUN may hit that enemy again
         .set    VAR_SHIPA,  0x0C7E05A0      ! the ship's sprite call: r4..r7, 3 stack args
         .set    VAR_LATEON, 0x0C7E05BE      ! (u8) hg_late ran lately (2, counted down per kept ship call); +1 = ship call kept
         .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
@@ -328,6 +329,13 @@ L_dext: .long   0x0C3B0A7C
         dt      r2
         bf/s    .Lclr_shot
         add     #4,r1
+        mov.l   L_hgcd,r1           ! HADOUGUN hit timers
+        mov     #48,r2
+.Lclr_cd:
+        mov.l   r0,@r1
+        dt      r2
+        bf/s    .Lclr_cd
+        add     #4,r1
         .endif
         mov.l   L_kills,r1
         mov.l   r0,@r1              ! VAR_KILLS
@@ -421,6 +429,7 @@ L_hadou:    .long VAR_HADOU
 L_hgs:      .long VAR_HGS
 L_hui:      .long VAR_HUI
 L_shots:    .long VAR_SHOTS
+L_hgcd:     .long VAR_HGCD
 menu_strs:
         .ifdef  STANDALONE
         .ascii  "            "
@@ -4494,8 +4503,10 @@ LHH_tint:   .long 0x80808000
         .set    HG_NSEG,    32              ! most trail segments
         .set    HG_STICK,   900             ! most frames (15 s) the ball stays on an enemy
         .set    HG_BFADE,   60              ! ... the last of them fading out
-        .set    HG_DMG,     2               ! trail damage per frame
-        .set    HG_HDMG,    2               ! stuck ball damage per frame
+        .set    HG_DMG,     1               ! trail damage per hit
+        .set    HG_HDMG,    1               ! stuck ball damage per hit
+        .set    HG_RATE,    12              ! frames between HADOUGUN hits on one enemy
+        .set    HG_STRONG,  10              ! the head sticks only to enemies with more HP
         .set    HG_HALFW,   20              ! half width of the trail for hits (px)
         .set    HG_HIT,     16              ! head hit distance (px)
         .set    HG_BANK,    0xFF0           ! bank ids for our two VRAM pages
@@ -4640,6 +4651,18 @@ hg_logic:
         mov.l   r0,@r1
         bsr     hg_puffage
         nop
+        mov.l   LG2_cd,r1           ! HADOUGUN hit timers count down
+        mov.l   WG2_192,r2
+.Lhq_cd:
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Lhq_cd1
+        add     #-1,r0
+        mov.b   r0,@r1
+.Lhq_cd1:
+        dt      r2
+        bf/s    .Lhq_cd
+        add     #1,r1
         mov.l   LG2_shots,r10
         mov     #HG_NSHOT,r8
 .Lhq_sl:
@@ -4717,10 +4740,7 @@ hg_shot:
         bra     .Lhq_slot
         add     #1,r5
 .Lhq_sl2:
-        mov     #0,r4
-        mov.l   LG2_crkflag,r6
-        mov.l   LG2_dmgfn,r0
-        jsr     @r0
+        bsr     hg_dmg
         mov     #HG_HDMG,r7
         bra     .Lhq_trail
         nop
@@ -4752,10 +4772,11 @@ hg_shot:
         mov.l   LG2_nohit,r1
         tst     r1,r0
         bf      .Lhq_hnext
-        mov.l   WG2_44,r0
-        mov.w   @(r0,r11),r0
-        tst     r0,r0
-        bt      .Lhq_hnext
+        mov.l   WG2_44,r0           ! strong enough to stick to (weak ones:
+        mov.w   @(r0,r11),r0        ! the head goes on, the trail kills them)
+        mov     #HG_STRONG,r1
+        cmp/gt  r1,r0
+        bf      .Lhq_hnext
         mov.l   @(44,r11),r0
         sub     r2,r0
         cmp/pz  r0
@@ -4850,11 +4871,8 @@ hg_shot:
         bt      .Lhq_ennext
         mov.l   r6,@-r15
         mov.l   r7,@-r15
-        mov     #0,r4
         mov     r9,r5
-        mov.l   LG2_crkflag,r6
-        mov.l   LG2_dmgfn,r0
-        jsr     @r0
+        bsr     hg_dmg
         mov     #HG_DMG,r7
         mov.l   @r15+,r7
         mov.l   @r15+,r6
@@ -5004,6 +5022,7 @@ LG2_enemy:  .long 0x0C416968
 LG2_halfw:  .long HG_HALFW << 16
 LG2_crkflag:.long 0xCC100000
 LG2_dmgfn:  .long 0x0C084F10
+LG2_cd:     .long VAR_HGCD
 LG2_bul:    .long 0x0C4541B4
 LG2_cancel: .long 0x0C088940
 LG2_puff:   .long VAR_PUFF
@@ -5017,6 +5036,75 @@ LG2_btop:   .long 0x0C5C178C
 LG2_bbase:  .long 0x0C106BF8
 LG2_bcan:   .long 0x00100000
 LG2_tick:   .long tick_crk
+
+! hg_dmg: HADOUGUN damage r7 to enemy r5 (index), at most once every HG_RATE
+! frames per enemy (VAR_HGCD), through the game's damage routine. The hit
+! cooldown it sets on the part (+0x98 of the part the hit lands on, after the
+! +0x90 parent links) is put back, so the HADOUGUN never blocks the player's
+! own shots. Uses r0-r7.
+hg_dmg:
+        mov.l   LH_cd,r1
+        add     r5,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bf      .Lhd_out
+        mov     #HG_RATE,r0
+        mov.b   r0,@r1
+        mov     r5,r0
+        mov.w   WH_cc,r2
+        mulu.w  r2,r0
+        sts     macl,r3
+        mov.l   LH_en,r2
+        add     r2,r3
+        mov     #8,r1
+.Lhd_up:
+        mov.l   @r3,r0              ! a linked part: the hit lands on its parent
+        mov.w   WH_4000,r2
+        tst     r2,r0
+        bt      .Lhd_t
+        mov.w   WH_90,r0
+        mov.w   @(r0,r3),r0
+        cmp/pz  r0
+        bf      .Lhd_t
+        mov.w   WH_cc,r2
+        mulu.w  r2,r0
+        sts     macl,r3
+        mov.l   LH_en,r2
+        add     r2,r3
+        dt      r1
+        bf      .Lhd_up
+.Lhd_t:
+        mov.w   WH_98,r0
+        add     r0,r3
+        mov.b   @r3,r2              ! its cooldown, cleared for our hit
+        mov     #0,r0
+        mov.b   r0,@r3
+        sts.l   pr,@-r15
+        mov.l   r3,@-r15
+        mov.l   r2,@-r15
+        mov     #0,r4
+        mov.l   LH_flag,r6
+        mov.l   LH_fn,r0
+        jsr     @r0
+        nop
+        mov.l   @r15+,r2
+        mov.l   @r15+,r3
+        mov.b   r2,@r3              ! and put back
+        lds.l   @r15+,pr
+.Lhd_out:
+        rts
+        nop
+        .align 1
+WH_cc:      .word 0xCC
+WH_4000:    .word 0x4000
+WH_90:      .word 0x90
+WH_98:      .word 0x98
+        .align 2
+LH_cd:      .long VAR_HGCD
+LH_en:      .long 0x0C416968
+LH_flag:    .long 0xCC100000
+LH_fn:      .long 0x0C084F10
+
 
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
 ! and 3 stack arguments) drawn over the aim lines, trail and shot head.
