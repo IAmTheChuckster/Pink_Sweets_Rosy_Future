@@ -95,10 +95,10 @@
         .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
         .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
         .set    VAR_HUR,    0x0C7E01FA      ! (word) ... next row of it
-        .set    VAR_PUFF,   0x0C7E0200      ! launch cloud: 16 puffs x 8 bytes (up, across words; age byte, 0 = free)
-        .set    HG_NPUFF,   16
-        .set    HG_PLIFE,   40              ! frames a puff lasts
-        .set    HG_PSPAWN,  48              ! puffs are made for this many frames after the launch
+        .set    VAR_PUFF,   0x0C7E0200      ! launch cloud: 32 puffs x 8 bytes (up, across words; age byte, 0 = free)
+        .set    HG_NPUFF,   32
+        .set    HG_PLIFE,   90              ! frames a puff lasts
+        .set    HG_PSPAWN,  60              ! puffs are made for this many frames after the launch
         .set    HG_CHUNK,   8192            ! pixels per upload chunk (hg_ubuf)
         .set    HG_FLIP,    0x80000000      ! sprite flip for the aim lines (point them up)
         .set    VAR_MODEAPP,0x0C7E01C8      ! (combined build) 1 = the Rosy Arrange code changes are in the program
@@ -4414,11 +4414,12 @@ LHH_tint:   .long 0x80808000
 !------------------------------------------------------------------
         .set    HG_SIDE,    16              ! option angle at the front
         .set    HG_TOP,     352             ! the shot leaves the screen above this (up axis, px)
-        .set    HG_LIFE,    180             ! frames a trail segment stays
+        .set    HG_LIFE,    900             ! frames (15 s) a trail segment stays (and damages)
         .set    HG_NSEG,    32              ! most trail segments
-        .set    HG_STICK,   150             ! most frames stuck to an enemy
+        .set    HG_STICK,   900             ! most frames (15 s) the ball stays on an enemy
+        .set    HG_BFADE,   60              ! ... the last of them fading out
         .set    HG_DMG,     2               ! trail damage per frame
-        .set    HG_HDMG,    4               ! stuck head damage per frame
+        .set    HG_HDMG,    2               ! stuck ball damage per frame
         .set    HG_HALFW,   20              ! half width of the trail for hits (px)
         .set    HG_HIT,     16              ! head hit distance (px)
         .set    HG_BANK,    0xFF0           ! bank ids for our two VRAM pages
@@ -4566,19 +4567,22 @@ hg_logic:
         mov     r1,r0
         cmp/eq  #-1,r0              ! -1: the head is gone (never read through it:
         bt      .Lhq_trail          ! a misaligned read crashes the real SH-3)
-        mov.w   @r1,r0              ! stuck: follow it while it lives
-        tst     r0,r0
-        bt      .Lhq_unstick
-        mov.l   WG2_44,r0
-        mov.w   @(r0,r1),r0
-        tst     r0,r0
-        bt      .Lhq_unstick
         mov.w   @(20,r10),r0        ! VAR_HSTK
         add     #1,r0
         mov.w   r0,@(20,r10)
         mov.l   WG2_stick,r2
         cmp/hs  r2,r0
-        bt      .Lhq_unstick
+        bt      .Lhq_unstick        ! 15 s: gone
+        mov.l   WG2_fade,r2
+        cmp/hs  r2,r0
+        bt      .Lhq_trail          ! fading: stays where it is
+        mov.w   @r1,r0              ! stuck: follow it while it lives
+        tst     r0,r0
+        bt      .Lhq_dead
+        mov.l   WG2_44,r0
+        mov.w   @(r0,r1),r0
+        tst     r0,r0
+        bt      .Lhq_dead
         mov.l   @(44,r1),r0
         mov.l   r0,@(8,r10)         ! head on the enemy
         mov.l   @(48,r1),r0
@@ -4600,6 +4604,11 @@ hg_logic:
         mov.l   LG2_dmgfn,r0
         jsr     @r0
         mov     #HG_HDMG,r7
+        bra     .Lhq_trail
+        nop
+.Lhq_dead:
+        mov.l   WG2_fade,r0         ! the enemy died: the ball fades out where it is
+        mov.w   r0,@(20,r10)
         bra     .Lhq_trail
         nop
 .Lhq_unstick:
@@ -4813,7 +4822,7 @@ hg_setang:
         nop
         .align 2
 WG2_alive:  .long 0xFFFFCE00
-WG2_end:    .long HG_NSEG * 3 + HG_LIFE + HG_STICK
+WG2_end:    .long HG_NSEG * 3 + HG_LIFE + 60
 WG2_4000:   .long 0x4000
 WG2_44:     .long 0x44
 WG2_cc:     .long 0xCC
@@ -4822,6 +4831,7 @@ WG2_1024:   .long 1024
 WG2_90:     .long 0x90
 WG2_inv:    .long 65536 / HG_CHARGE
 WG2_stick:  .long HG_STICK
+WG2_fade:   .long HG_STICK - HG_BFADE
 WG2_twelfth:.long 0x1556
         .align 2
 LG2_p1:     .long P1
@@ -4979,8 +4989,24 @@ hg_pdraw:
         mov.l   LP_sdefs,r0
         add     r0,r1
         mov     r1,r4
-        mov.w   WP_ff,r6            ! alpha 0xFF - age / 3
-        sub     r2,r6
+        mov     r8,r0               ! age = BT - 3 i
+        add     r8,r0
+        add     r8,r0
+        mov     r9,r5
+        sub     r0,r5
+        mov.w   WP_life,r0          ! frames left
+        sub     r5,r0
+        mov     #120,r6
+        cmp/hs  r6,r0
+        bf/s    .Lpd_al             ! the last 120 frames: alpha = frames left
+        mov     r0,r6
+        mov.w   WP_sixth,r0         ! else alpha = 0xFF - age / 6
+        mulu.w  r0,r5
+        sts     macl,r5
+        shlr16  r5
+        mov.w   WP_ff,r6
+        sub     r5,r6
+.Lpd_al:
         mov     r6,r0
         shll8   r0
         or      r0,r6
@@ -4999,8 +5025,9 @@ hg_pdraw:
         extu.b  r0,r2               ! age
         tst     r2,r2
         bt      .Lpd_pn
-        mov     r2,r0               ! frame = min(age / 4, 7)
+        mov     r2,r0               ! frame = min(age / 8, 7)
         shlr2   r0
+        shlr    r0
         mov     #7,r1
         cmp/hi  r1,r0
         bf      .Lpd_pf
@@ -5014,15 +5041,14 @@ hg_pdraw:
         mov.l   LP_pdefs,r0
         add     r0,r1
         mov     r1,r4
-        mov     r2,r0               ! alpha 0xF0 - age x 5
-        shll2   r0
+        mov     r2,r0               ! additive, alpha 0xC0 - age x 2
         add     r2,r0
-        mov.w   WP_f0,r6
+        mov.w   WP_c0,r6
         sub     r0,r6
         mov     r6,r0
         shll8   r0
         or      r0,r6
-        mov.l   LP_seg,r0
+        mov.l   LP_add,r0
         or      r0,r6
         mov.w   @r11,r7             ! up
         extu.w  r7,r7
@@ -5062,6 +5088,21 @@ hg_pdraw:
         mov     r1,r4
         mov.w   WP_8000,r6
         extu.w  r6,r6
+        mov.l   LP_hstk,r0          ! fading out: alpha = frames left x 4
+        mov.w   @r0,r0
+        extu.w  r0,r1
+        mov.w   WP_bfade,r0
+        cmp/hs  r0,r1
+        bf      .Lpd_bd
+        mov.w   WP_stick,r6
+        sub     r1,r6
+        shll2   r6
+        mov     r6,r0
+        shll8   r0
+        or      r0,r6
+        mov.l   LP_seg,r0
+        or      r0,r6
+.Lpd_bd:
         mov.l   @(8,r10),r7
         bsr     hg_one
         mov.l   @(12,r10),r3
@@ -5115,6 +5156,10 @@ WP_8000:    .word 0x8000
 WP_life:    .word HG_LIFE
 WP_ff:      .word 0xFF
 WP_f0:      .word 0xF0
+WP_c0:      .word 0xC0
+WP_sixth:   .word 0x2AAB
+WP_stick:   .word HG_STICK
+WP_bfade:   .word HG_STICK - HG_BFADE
         .align 2
 LP_btab:    .long 0x0C49CD60 + HG_BANK * 4
 LP_page0:   .long 0x0B000E00
@@ -5122,6 +5167,8 @@ LP_page1:   .long 0x0C000E00
 LP_page2:   .long 0x0D000E00
 LP_page3:   .long 0x0E000E00
 LP_puff:    .long VAR_PUFF
+LP_hstk:    .long VAR_HSTK
+LP_add:     .long 0x02070000
 LP_pdefs:   .long hg_pdefs
 LP_bdefs:   .long hg_bdefs
 LP_hgs:     .long VAR_HGS
@@ -5313,8 +5360,6 @@ hg_puffs:
         mov     #HG_PSPAWN,r3
         cmp/hs  r3,r0
         bt      .Lpf_out
-        tst     #1,r0
-        bf      .Lpf_out
         mov.l   LF_puff,r1          ! a free puff
         mov     #HG_NPUFF,r2
 .Lpf_free:
@@ -5339,11 +5384,11 @@ hg_puffs:
         mov.l   r0,@r3
         shlr16  r0
         mov     r0,r4
-        mov     #25,r5
+        mov     #33,r5
         mulu.w  r5,r4
         sts     macl,r4
-        shlr16  r4                  ! 0..24
-        add     #-12,r4
+        shlr16  r4                  ! 0..32
+        add     #-16,r4
         mov.l   @(12,r10),r0
         shlr16  r0
         add     r4,r0
