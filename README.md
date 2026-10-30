@@ -1,7 +1,8 @@
 # Pink Sweets Rosy Future
 
 ## To Do
-15. add skills
+1. fix hadougun
+2. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
 This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
