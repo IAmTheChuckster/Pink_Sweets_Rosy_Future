@@ -4794,11 +4794,20 @@ hg_logic:
         mov.l   WG2_192,r0
         cmp/eq  r0,r9
         bf      .Lhq_en
-        mov.l   LG2_bul,r10         ! bullets in the column
-        mov.l   WG2_1024,r9
+        ! bullets in the column: the game's live-bullet list is a stack of
+        ! pointers from @0x0C106BF8 up to @0x0C5C178C (walked top down, as
+        ! the game does, so removals during the walk are safe)
+        mov.l   LG2_btop,r9
+        mov.l   @r9,r9
 .Lhq_bl:
-        mov.l   @r10,r0
-        tst     r0,r0
+        mov.l   LG2_bbase,r0
+        mov.l   @r0,r0
+        cmp/hi  r0,r9
+        bf      .Lhq_out
+        add     #-4,r9
+        mov.l   @r9,r10
+        mov.l   @r10,r0             ! a live bullet (bit 31)
+        cmp/pz  r0
         bt      .Lhq_blnext
         mov.l   @(48,r10),r0
         cmp/ge  r6,r0
@@ -4814,18 +4823,30 @@ hg_logic:
         mov.l   LG2_halfw,r1
         cmp/hi  r1,r0
         bt      .Lhq_blnext
+        mov.l   r9,@-r15
+        mov.l   r6,@-r15
+        mov.l   r7,@-r15
+        mov.l   @(48,r10),r6        ! where it was (for the medal)
+        mov.l   @(52,r10),r7
         mov.l   r6,@-r15
         mov.l   r7,@-r15
         mov.l   LG2_cancel,r0
         jsr     @r0
         mov     r10,r4
+        mov.l   @r15+,r7            ! as the rose cracker: a 1,000-point
+        mov.l   @r15+,r6            ! medal pops out (arr_qspawn) and a
+        mov.l   LG2_qpush,r0        ! tick-point for the meter
+        jsr     @r0
+        nop
+        mov.l   LG2_tick,r0
+        jsr     @r0
+        nop
         mov.l   @r15+,r7
         mov.l   @r15+,r6
+        mov.l   @r15+,r9
 .Lhq_blnext:
-        mov.l   WG2_90,r0
-        dt      r9
-        bf/s    .Lhq_bl
-        add     r0,r10
+        bra     .Lhq_bl
+        nop
 .Lhq_out:
         mov.l   @r15+,r11
         mov.l   @r15+,r10
@@ -4903,6 +4924,10 @@ LG2_bul:    .long 0x0C4541B4
 LG2_cancel: .long 0x0C088940
 LG2_puff:   .long VAR_PUFF
 LG2_bhold:  .long VAR_BHOLD
+LG2_qpush:  .long q_push
+LG2_btop:   .long 0x0C5C178C
+LG2_bbase:  .long 0x0C106BF8
+LG2_tick:   .long tick_crk
 
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
 ! and 3 stack arguments), then the aim lines, trail and shot head on top.
