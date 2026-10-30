@@ -98,6 +98,8 @@
         .set    HG_NSHOT,   4
         .set    VAR_HFC,    0x0C7E0590      ! (u32) logic frame counter
         .set    VAR_HDRAWN, 0x0C7E0594      ! (u32) frame the effects were last drawn
+        .set    VAR_SHIPA,  0x0C7E05A0      ! the ship's sprite call: r4..r7, 3 stack args
+        .set    VAR_LATEON, 0x0C7E05BE      ! (u8) hg_late ran lately (2, counted down per kept ship call); +1 = ship call kept
         .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
         .set    VAR_HUR,    0x0C7E01FA      ! (word) ... next row of it
         .set    VAR_BHOLD,  0x0C7E01F9      ! frames B has been held (with HADOUGUN stock)
@@ -2921,16 +2923,7 @@ arr_spr:
         mov.l   LS_pdraw,r1
         cmp/eq  r1,r0
         bt      .Ls_hg
-        mova    LS_after,r0         ! drawn after the ship: if it wasn't drawn
-        mov     r0,r1               ! this frame, the HADOUGUN effects go here
         sts     pr,r0
-        mov     #4,r2
-.Ls_af:
-        mov.l   @r1+,r3
-        cmp/eq  r3,r0
-        bt      .Ls_fx
-        dt      r2
-        bf      .Ls_af
         mov.l   LS_odraw,r1
         cmp/eq  r1,r0
         bf      .Ls_orig
@@ -5028,6 +5021,28 @@ LG2_tick:   .long tick_crk
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
 ! and 3 stack arguments) drawn over the aim lines, trail and shot head.
 hg_pdraw:
+        mov.l   LQ_late,r1          ! hg_late is running: keep the call for it
+        mov.b   @r1,r0              ! (the ship goes over the trail and over the
+        tst     r0,r0               !  scenery tile layers drawn after this)
+        bt      .Lqd_now
+        add     #-1,r0
+        mov.b   r0,@r1
+        mov.l   LQ_ship,r1
+        mov.l   r4,@r1
+        mov.l   r5,@(4,r1)
+        mov.l   r6,@(8,r1)
+        mov.l   r7,@(12,r1)
+        mov.l   @r15,r0
+        mov.l   r0,@(16,r1)
+        mov.l   @(4,r15),r0
+        mov.l   r0,@(20,r1)
+        mov.l   @(8,r15),r0
+        mov.l   r0,@(24,r1)
+        mov.l   LQ_late,r1
+        mov     #1,r0
+        rts
+        mov.b   r0,@(1,r1)          ! pending
+.Lqd_now:
         sts.l   pr,@-r15
         mov.l   r8,@-r15
         mov.l   r9,@-r15
@@ -5060,6 +5075,70 @@ hg_pdraw:
         lds.l   @r15+,pr
         rts
         nop
+
+! hg_late: the in-game main loop's call to 0x0C074F70 (after the game's
+! sprites and scenery tile layers, before the text layer). In Rosy Arrange
+! real play, the HADOUGUN effects are drawn here, then the ship (its sprite
+! call kept by hg_pdraw), so the trail is over the scenery and the ship over
+! the trail.
+hg_late:
+        sts.l   pr,@-r15
+        mov.l   LQ_orig,r0
+        jsr     @r0
+        nop
+        mov.l   r0,@-r15
+        mov.l   LQ_flag,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Lql_out
+        mov.l   LQ_real,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Lql_out
+        mov.l   LQ_late,r1
+        mov     #2,r0
+        mov.b   r0,@r1
+        bsr     hg_fx
+        nop
+        mov.l   LQ_late,r1          ! the ship, if its call was kept this frame
+        mov.b   @(1,r1),r0
+        tst     r0,r0
+        bt      .Lql_out
+        mov     #0,r0
+        mov.b   r0,@(1,r1)
+        mov.l   LQ_ship,r1
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov.l   r11,@-r15
+        add     #-12,r15
+        mov.l   @(16,r1),r0
+        mov.l   r0,@r15
+        mov.l   @(20,r1),r0
+        mov.l   r0,@(4,r15)
+        mov.l   @(24,r1),r0
+        mov.l   r0,@(8,r15)
+        mov.l   @r1,r4
+        mov.l   @(4,r1),r5
+        mov.l   @(8,r1),r6
+        bsr     hg_spr
+        mov.l   @(12,r1),r7
+        add     #12,r15
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+.Lql_out:
+        mov.l   @r15+,r0
+        lds.l   @r15+,pr
+        rts
+        nop
+        .align 2
+LQ_late:    .long VAR_LATEON
+LQ_ship:    .long VAR_SHIPA
+LQ_orig:    .long 0x0C074F70
+LQ_flag:    .long VAR_FLAG
+LQ_real:    .long REALPLAY
 
 ! hg_fx: the HADOUGUN effects (aim lines, smoke, trails, heads/balls), at
 ! most once a frame: from the ship's sprite call, or, when the ship isn't

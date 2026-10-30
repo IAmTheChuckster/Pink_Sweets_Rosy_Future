@@ -416,6 +416,9 @@ COMBO_PATCHES = [p for p in PATCHES if p[0] not in (0x0C06E64A, 0x0C06E658, 0x0C
     (0x0C0911B6, bytes.fromhex("e808")),
     (0x0C091118, bytes.fromhex("e30b")),
     (0x0C09112C, bytes.fromhex("7a74")),
+    # in-game main loop's call literal (0x0C074F70, after the scenery) -> hg_late:
+    # HADOUGUN effects and the ship drawn over the scenery tile layers
+    (0x0C071CEC, "hg_late"),
 ]
 
 def _warning_rf(block):
