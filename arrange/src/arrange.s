@@ -4884,8 +4884,17 @@ hg_shot:
         bf      .Lhs_out
         add     #-4,r9
         mov.l   @r9,r10
-        mov.l   @r10,r0             ! a live bullet (bit 31)
-        cmp/pz  r0
+        mov.l   @r10,r0             ! a live bullet (bit 31) that can be
+        cmp/pz  r0                  ! cancelled (0x00100000, as the game's
+        bt      .Lhq_blnext         ! own cracker loop tests: other bullet
+        mov.l   LG2_bcan,r1         ! types make a bad item when cancelled,
+        tst     r1,r0               ! which crashes the real SH-3)
+        bt      .Lhq_blnext
+        mov.l   @(32,r10),r1        ! and has a hitbox (the game skips
+        tst     r1,r1               ! bullets whose hit-shape list is empty)
+        bt      .Lhq_blnext
+        mov.l   @r1,r1
+        tst     r1,r1
         bt      .Lhq_blnext
         mov.l   @(48,r10),r0
         cmp/ge  r6,r0
@@ -5013,6 +5022,7 @@ LG2_bhold:  .long VAR_BHOLD
 LG2_qpush:  .long q_push
 LG2_btop:   .long 0x0C5C178C
 LG2_bbase:  .long 0x0C106BF8
+LG2_bcan:   .long 0x00100000
 LG2_tick:   .long tick_crk
 
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
