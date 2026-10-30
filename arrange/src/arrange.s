@@ -75,6 +75,7 @@
         .set    VAR_HPMAX,  0x0C7E01CE      ! (combined, word) boss health at the start of the fight/phase
         .set    VAR_HPOBJ,  0x0C7E01D0      ! (combined, u32) object VAR_HPMAX belongs to
         .set    BAR_CHR,    0x400           ! first text char of the bar tiles (build.py bar_inc)
+        .set    BAR_DIGC,   0x460           ! red middle cells with the countdown 1..15 (build.py)
         .set    VAR_MODEAPP,0x0C7E01C8      ! (combined build) 1 = the Rosy Arrange code changes are in the program
         .set    RF_MENU,    0xA0100498      ! Rosy Future's 5-entry title menu (sets VAR_SEL / VAR_FLAG / MODE_SEL)
         .set    VAR_CRKHOLD,0x0C7E01BE      ! frames left of "the rose cracker is busy": an empty
@@ -4062,6 +4063,7 @@ bhud2_draw:
         bra     .Lb2_div
         add     r5,r7
 .Lb2_col:
+        mov     r4,r2               ! r2 = health (the object isn't needed now)
         mov.w   WH2_chr,r7          ! colour: char base
         mov     #30,r0
         cmp/hi  r0,r4
@@ -4110,8 +4112,29 @@ bhud2_draw:
         bf      .Lb2_c2
         mov     r4,r0
 .Lb2_c2:
+        mov     r3,r4               ! countdown: the middle cell when red (health 1..15)
+        add     #-4,r4
+        tst     r4,r4
+        bf      .Lb2_plain
+        mov     #15,r4
+        cmp/hi  r4,r2
+        bt      .Lb2_plain
+        tst     r2,r2
+        bt      .Lb2_plain
+        mov     r2,r4               ! BAR_DIGC + (health - 1) * 9 + n
+        add     #-1,r4
+        mov     r4,r5
+        shll2   r5
+        shll    r5
+        add     r4,r5
+        add     r5,r0
+        mov.w   WH2_digc,r4
+        bra     .Lb2_put
+        add     r4,r0
+.Lb2_plain:
         add     r5,r0
         add     r7,r0
+.Lb2_put:
         mov.l   LH2_white,r4
         or      r4,r0
         mov.l   r0,@r1
@@ -4169,6 +4192,7 @@ bhud2_clear:
         nop
         .align 1
 WH2_chr:    .word BAR_CHR
+WH2_digc:   .word BAR_DIGC
 WH2_44:     .word 0x44
         .align 2
 LH2_row36:  .long TEXT + 36*0x80 + 13*4

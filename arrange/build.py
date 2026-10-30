@@ -175,6 +175,7 @@ STANDALONE_PATCHES = [
 # (char k at VRAM x = 0x8F8 - (k >> 5) * 8, y = (k & 31) * 8, stored rotated
 # 90 deg clockwise).
 BAR_CHAR = 0x400
+BAR_DIGC = 0x460                  # countdown cells (after the 3 x 32 bar chars)
 BAR_COLOURS = [(40, 220, 60), (240, 220, 40), (230, 30, 30)]   # green, yellow, red
 
 
@@ -204,6 +205,39 @@ def bar_inc():
                         r, g, b_, al = tile.getpixel((xx, yy))
                         w = ((r >> 3) << 10) | ((g >> 3) << 5) | (b_ >> 3)
                         vram[(vx + xx, vy + yy)] = (w | 0x8000) if al else 0
+    # countdown cells (red bar, health 1..15): the middle cell (cell 4) with
+    # the number in white 3 x 5 digits over its fill n = 0..8:
+    # char BAR_DIGC + (health - 1) * 9 + n
+    font = {"0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"],
+            "2": ["111", "001", "111", "100", "111"], "3": ["111", "001", "011", "001", "111"],
+            "4": ["101", "101", "111", "001", "001"], "5": ["111", "100", "111", "001", "111"],
+            "6": ["111", "100", "111", "101", "111"], "7": ["111", "001", "010", "010", "010"],
+            "8": ["111", "101", "111", "101", "111"], "9": ["111", "101", "111", "001", "111"]}
+    red = BAR_COLOURS[2]
+    for hp in range(1, 16):
+        txt = str(hp)
+        gx = 1 if len(txt) == 2 else 3          # two digits: x 1..3 and 5..7 (gap at 4); one: x 3..5
+        for n in range(9):
+            tile = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+            for x in range(8):
+                tile.putpixel((x, 1), W + (255,))
+                tile.putpixel((x, 7), W + (255,))
+            for x in range(n):
+                for y in range(2, 7):
+                    tile.putpixel((x, y), red + (255,))
+            for d, ch in enumerate(txt):
+                for yy, row in enumerate(font[ch]):
+                    for xx, bit in enumerate(row):
+                        if bit == "1":
+                            tile.putpixel((gx + d * 4 + xx - (1 if len(txt) == 2 else 0) * 0, 2 + yy), W + (255,))
+            k = BAR_DIGC + (hp - 1) * 9 + n
+            tile = tile.rotate(-90)
+            vx, vy = 0x8F8 - (k >> 5) * 8, (k & 31) * 8
+            for yy in range(8):
+                for xx in range(8):
+                    r, g, b_, al = tile.getpixel((xx, yy))
+                    w = ((r >> 3) << 10) | ((g >> 3) << 5) | (b_ >> 3)
+                    vram[(vx + xx, vy + yy)] = (w | 0x8000) if al else 0
     x0 = min(x for x, y in vram); x1 = max(x for x, y in vram)
     y0 = min(y for x, y in vram); y1 = max(y for x, y in vram)
     words = [0xC000, 0x0000, 0x2000, 0x0000, 0x9999, 0x9999, x0, y0, x1 - x0, y1 - y0]
