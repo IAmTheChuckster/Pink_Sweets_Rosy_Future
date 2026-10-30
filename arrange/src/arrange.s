@@ -95,6 +95,8 @@
         .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
         .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
         .set    VAR_HUR,    0x0C7E01FA      ! (word) ... next row of it
+        .set    VAR_BHOLD,  0x0C7E01F9      ! frames B has been held (with HADOUGUN stock)
+        .set    HG_TAP,     15              ! a B tap (cracker) is shorter than this; longer charges
         .set    VAR_PUFF,   0x0C7E0200      ! launch cloud: 32 puffs x 8 bytes (up, across words; age byte, 0 = free)
         .set    HG_NPUFF,   32
         .set    HG_PLIFE,   90              ! frames a puff lasts
@@ -460,6 +462,42 @@ arr_input:
         mov.b   r3,@r1
         not     r6,r6
         and     r3,r6               ! r6 = new presses
+        .ifndef STANDALONE
+        ! HADOUGUN in stock: B fires the rose cracker on a tap (let go within
+        ! HG_TAP frames), on the release; a longer hold charges the HADOUGUN
+        mov.l   L2_stock,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Lbt_done           ! no stock: B fires on the press as always
+        mov.l   L2_bhold,r1
+        mov.b   @r1,r0
+        extu.b  r0,r2               ! frames B has been held
+        mov     r3,r0
+        tst     #0x20,r0
+        bt      .Lbt_up
+        mov     #~0x20,r0           ! held: no cracker yet
+        and     r0,r6
+        mov     r2,r0
+        cmp/eq  #-1,r0
+        bt      .Lbt_done
+        mov     #127,r0
+        cmp/hs  r0,r2
+        bt      .Lbt_done
+        add     #1,r2
+        bra     .Lbt_done
+        mov.b   r2,@r1
+.Lbt_up:
+        tst     r2,r2
+        bt      .Lbt_done
+        mov     #0,r0
+        mov.b   r0,@r1
+        mov     #HG_TAP,r0
+        cmp/hs  r0,r2
+        bt      .Lbt_done           ! a hold: nothing
+        mov     #0x20,r0            ! a tap: the B press happens now
+        or      r0,r6
+.Lbt_done:
+        .endif
         mov     r3,r0               ! A (button 1) hold time, with or without other buttons
         tst     #0x10,r0
         mov.l   L2_ahold,r1
@@ -760,6 +798,10 @@ L2_flag:    .long VAR_FLAG
 L2_p1:      .long P1
 L2_p2stat:  .long P2STAT
 L2_prev:    .long VAR_PREV
+        .ifndef STANDALONE
+L2_stock:   .long VAR_HADOU
+L2_bhold:   .long VAR_BHOLD
+        .endif
 L2_latch:   .long VAR_LATCH
 L2_acc:     .long VAR_ACC
 L2_ret:     .long INPUT_RET
@@ -4470,13 +4512,19 @@ hg_logic:
         mov.w   r0,@(2,r2)
         tst     r4,r4
         bt      .Lhq_beam
-        mov.l   LG2_stock,r1        ! B held with stock: charge
+        mov.l   LG2_stock,r1        ! B held past a tap with stock: charge
         mov.b   @r1,r0
         tst     r0,r0
         bt      .Lhq_beam
+        mov.l   LG2_bhold,r1
+        mov.b   @r1,r0
+        extu.b  r0,r0
+        mov     #HG_TAP,r1
+        cmp/hs  r1,r0
+        bf      .Lhq_beam
         mov     #1,r0
         mov.b   r0,@r8
-        mov     #0,r0
+        mov     #HG_TAP,r0          ! the tap time counts
         bra     .Lhq_ang
         mov.b   r0,@(1,r8)
 .Lhq_charge:
@@ -4852,6 +4900,7 @@ LG2_dmgfn:  .long 0x0C084F10
 LG2_bul:    .long 0x0C4541B4
 LG2_cancel: .long 0x0C088940
 LG2_puff:   .long VAR_PUFF
+LG2_bhold:  .long VAR_BHOLD
 
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
 ! and 3 stack arguments), then the aim lines, trail and shot head on top.
