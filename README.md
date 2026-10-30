@@ -13,9 +13,6 @@
 6. **All** draw a transparent box around the boss health
 8. **Arrange:** tweak rank, 1up adds 5, dying subtracks 3
 10. **Arrange:** drop lipstick for extend score
-12. **Arrange:** add big boss's hadougun
-13. **Arrange:** dying adds hadougun
-14. **Arrange:** holding bomb for more than 2 seconds hadougun, releasing the button shoots it
 15. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
