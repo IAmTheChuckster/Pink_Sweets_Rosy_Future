@@ -335,8 +335,9 @@ COMBO_PATCHES = [p for p in PATCHES if p[0] not in (0x0C06E64A, 0x0C06E658, 0x0C
     (0x0C07AF48, "ext_hook"),
     # sound driver channel start -> snd_hook (louder pickup sound for cracker flowers)
     (0x0C05FB24, "snd_hook"),
-    # title: PRESS START one row lower (row 16), a blank row under the menu
-    (0x0C06E84A, bytes.fromhex("e510")),
+    # title: PRESS START on row 18 (a blank row under the menu, which is moved
+    # up two rows, see RF_HUD_PATCHES), clear of the countdown below it
+    (0x0C06E84A, bytes.fromhex("e512")),
     # high-score table: 9 score digits (was 8), 11 px apart (was 12), right edge 4 px further right
     (0x0C0911B6, bytes.fromhex("e808")),
     (0x0C091118, bytes.fromhex("e30b")),
@@ -362,6 +363,15 @@ COMBO_PATCHES += [
     _warning_rf(0x0C1068A6),            # overseas warning
     # title footer: "SALE BY AMI" -> "NOT FOR SALE" (the print's string literal)
     (0x0C06E77C, "nfs_str"),
+]
+
+# Rosy Future's own title-menu routine (u4 0x100498, run from ROM) draws the
+# five menu lines; its literals are patched in the u4 (offset, old, new):
+# menu two rows higher (rows 24..20, was 22..18) so PRESS START (row 18) and
+# the countdown under it don't overlap.
+RF_HUD_PATCHES = [
+    (0x100550, 0x0C3B011C, 0x0C3B021C),     # text cell of the first line (row 22 -> 24, col 8)
+    (0x100554, 0x0C453616, 0x0C453618),     # dirty flags of rows 18..22 -> 20..24
 ]
 
 # Combined build: changes that must only be in the program during a Rosy Arrange
@@ -457,6 +467,11 @@ def main():
     if set(region) != {0xFF} and region != code:
         sys.exit("0x101000 is not free; refusing to overwrite")
     rom[CODE_OFF:CODE_OFF + len(code)] = code
+    if not standalone:
+        for off, old, new in RF_HUD_PATCHES:
+            if rom[off:off + 4] != struct.pack(">I", old):
+                sys.exit(f"Rosy Future HUD literal at 0x{off:X} is not 0x{old:08X}")
+            rom[off:off + 4] = struct.pack(">I", new)
     if syms["boot_patch"] != RAM_BASE:
         sys.exit("boot_patch must be first")
     rom[BOOT_LIT:BOOT_LIT + 4] = struct.pack(">I", CODE_CPU)
