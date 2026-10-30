@@ -1,9 +1,5 @@
 # Pink Sweets Rosy Future
 
-## Bugs
-1. investigate a possible bug with kasumi where it stopped in the Ruins but the song kept playing for a bit then the song stopped
-2. expand highscore to 9 digits
-
 ## To Do
 1. update warning page
 2. update title page and separate the press start from the rest
