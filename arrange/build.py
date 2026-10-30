@@ -271,14 +271,14 @@ def bar_inc():
     for i in range(0, len(words), 8):
         lines.append("        .word " + ",".join(f"0x{w:04X}" for w in words[i:i + 8]))
     # HADOUGUN graphics from Ibara (see HG_REGIONS), uploaded in the same list
+    lines += ["        .word 0x0000,0x0000", "        .align 2"]
+    # HADOUGUN graphics regions (kept in the u4 at HG_ROM_OFF, uploaded in
+    # chunks by hg_upload): ROM address (uncached), dest x, dest y, w, h
+    lines.append("hg_regions:")
     for r in HG_REGIONS:
-        lines.append("        .word 0x2000,0x0000,0x9999,0x9999,0x%04X,0x%04X,0x%04X,0x%04X"
-                     % (r["dx"], r["dy"], r["w"] - 1, r["h"] - 1))
-        lines.append("hgpix_%s:" % r["name"])
-        px = hg_pixels(r)
-        for i in range(0, len(px), 16):
-            lines.append("        .byte " + ",".join("0x%02X" % b for b in px[i:i + 16]))
-    lines += ["        .word 0x0000,0x0000", "        .align 2", ""]
+        lines.append("        .long 0x%08X" % (0xA0000000 + HG_ROM_OFF + r["rom"]))
+        lines.append("        .word 0x%04X,0x%04X,0x%04X,0x%04X" % (r["dx"], r["dy"], r["w"], r["h"]))
+    lines += ["        .set    HG_NREG, %d" % len(HG_REGIONS), "        .align 2", ""]
     return "\n".join(lines)
 
 
@@ -298,7 +298,17 @@ HG_REGIONS = [
     dict(name="line0", page=5514564, sx=0x00, sy=0xA8, w=128, h=24,  dx=0xC00, dy=0xE00),
     # glow around the line (Ibara 0x900,0x100)
     dict(name="glow0", page=5383472, sx=0x80, sy=0xA8, w=128, h=24,  dx=0xC80, dy=0xE00),
+    # red ball on a stuck shot: 9 frames of 84 x 84 (Ibara 0x600,0x100, whole page)
+    dict(name="ball",  page=3941460, sx=0x00, sy=0x00, w=256, h=256, dx=0xD00, dy=0xE00),
+    # smoke puffs of the launch cloud: 8 frames of 32 x 32 (Ibara 0x1E0,0x400)
+    dict(name="puff",  page=12462440, sx=0xE0, sy=0x00, w=32, h=256, dx=0xE00, dy=0xE00),
 ]
+# the graphics are kept in the u4 here (CPU 0xA0180000), outside the RAM copy
+HG_ROM_OFF = 0x180000
+_o = 0
+for _r in HG_REGIONS:
+    _r["rom"] = _o
+    _o += (_r["w"] * _r["h"] * 2 + 3) & ~3
 
 
 def hg_rows(r):
@@ -541,6 +551,10 @@ def main():
     if syms["boot_patch"] != RAM_BASE:
         sys.exit("boot_patch must be first")
     rom[BOOT_LIT:BOOT_LIT + 4] = struct.pack(">I", CODE_CPU)
+    if not standalone and os.environ.get("IBARA_U2"):
+        for r in HG_REGIONS:
+            px = hg_pixels(r)
+            rom[HG_ROM_OFF + r["rom"]:HG_ROM_OFF + r["rom"] + len(px)] = px
 
     out = bytes(unswap(rom))
     open(sys.argv[2], "wb").write(out)
@@ -551,8 +565,7 @@ def main():
     if not standalone:
         # Ibara graphics fill map for the patchers: u4 offset, u2 offset, bytes per row, rows
         for r in HG_REGIONS:
-            u4off = CODE_OFF + syms["hgpix_" + r["name"]] - RAM_BASE
-            print(f"IBARA_FILL {u4off} {r['page'] + r['sy'] * 512 + r['sx'] * 2} {r['w'] * 2} {r['h']}")
+            print(f"IBARA_FILL {HG_ROM_OFF + r['rom']} {r['page'] + r['sy'] * 512 + r['sx'] * 2} {r['w'] * 2} {r['h']}")
     print("wrote", sys.argv[2])
 
 

@@ -93,6 +93,13 @@
         .set    VAR_HNSEG,  0x0C7E01F2      ! (word) trail segments dropped
         .set    HG_CHARGE,  60              ! frames (1 s) to bring the options to the front
         .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
+        .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
+        .set    VAR_HUR,    0x0C7E01FA      ! (word) ... next row of it
+        .set    VAR_PUFF,   0x0C7E0200      ! launch cloud: 16 puffs x 8 bytes (up, across words; age byte, 0 = free)
+        .set    HG_NPUFF,   16
+        .set    HG_PLIFE,   40              ! frames a puff lasts
+        .set    HG_PSPAWN,  48              ! puffs are made for this many frames after the launch
+        .set    HG_CHUNK,   8192            ! pixels per upload chunk (hg_ubuf)
         .set    HG_FLIP,    0x80000000      ! sprite flip for the aim lines (point them up)
         .set    VAR_MODEAPP,0x0C7E01C8      ! (combined build) 1 = the Rosy Arrange code changes are in the program
         .set    RF_MENU,    0xA0100498      ! Rosy Future's 5-entry title menu (sets VAR_SEL / VAR_FLAG / MODE_SEL)
@@ -295,6 +302,9 @@ L_dext: .long   0x0C3B0A7C
         mov     #0,r0
         mov.l   L_hpobj,r1
         mov.l   r0,@r1
+        mov.l   L_hui,r1            ! HADOUGUN graphics uploaded again (hg_upchunk)
+        mov.w   r0,@r1
+        mov.w   r0,@(2,r1)
         mov.l   L_hadou,r1          ! HADOUGUN: a new game starts with 1, no shot
         mov.b   r0,@(1,r1)          ! VAR_HLIVES = 0
         mov     #1,r0
@@ -394,6 +404,7 @@ L_bup:      .long VAR_BUP
 L_hpobj:    .long VAR_HPOBJ
 L_hadou:    .long VAR_HADOU
 L_hgs:      .long VAR_HGS
+L_hui:      .long VAR_HUI
 menu_strs:
         .ifdef  STANDALONE
         .ascii  "            "
@@ -2619,7 +2630,22 @@ labels_blit:
         mov.l   LB_blist,r0
         bsr     blt_run
         nop
+        bra     .Lr_out4            ! one list per kick
+        nop
 .Lr_out3:
+        mov.l   LB_hui,r1           ! HADOUGUN graphics, one chunk per kick
+        mov.b   @r1,r0
+        mov     #HG_NREG,r2
+        cmp/hs  r2,r0
+        bt      .Lr_out4
+        bsr     blt_idle
+        nop
+        tst     r0,r0
+        bt      .Lr_out4
+        mov.l   LB_upchunk,r0
+        jsr     @r0
+        nop
+.Lr_out4:
         .endif
         lds.l   @r15+,pr
         rts
@@ -2679,6 +2705,8 @@ LB_pend:    .long VAR_CPEND
         .ifndef STANDALONE
 LB_bup:     .long VAR_BUP
 LB_blist:   .long bar_list + 0xA0000000     ! uncached alias
+LB_hui:     .long VAR_HUI
+LB_upchunk: .long hg_upchunk
         .endif
 LB_stat:    .long 0xB8000010
 LB_addr:    .long 0xB8000008
@@ -4482,6 +4510,14 @@ hg_logic:
         mov     #0,r0
         mov.l   r0,@(16,r1)         ! VAR_HOBJ: flying
         mov.l   r0,@(20,r1)         ! VAR_HSTK, VAR_HNSEG
+        mov.l   LG2_puff,r1         ! no puffs left from the last shot
+        mov     #HG_NPUFF,r2
+        mov     #0,r0
+.Lhq_pclr:
+        mov.b   r0,@(4,r1)
+        dt      r2
+        bf/s    .Lhq_pclr
+        add     #8,r1
         mov     #1,r0
         mov.w   r0,@(6,r8)          ! VAR_BT = 1
 .Lhq_toback:
@@ -4618,6 +4654,8 @@ hg_logic:
         cmp/eq  r0,r9
         bf      .Lhq_hit
 .Lhq_trail:
+        bsr     hg_puffs
+        nop
         ! trail segments follow the head up the column (one every 12 px)
         mov.l   @(8,r10),r0         ! while flying: n = (head - BX) / 12
         mov.l   @(16,r10),r1
@@ -4738,6 +4776,7 @@ hg_logic:
         rts
         nop
 
+
 ! hg_setang: option angles from VAR_HGT (0 = own angle, HG_CHARGE = front).
 ! r8 -> VAR_HGS. Uses r0..r3, r5, r6.
 hg_setang:
@@ -4802,6 +4841,7 @@ LG2_crkflag:.long 0xCC100000
 LG2_dmgfn:  .long 0x0C084F10
 LG2_bul:    .long 0x0C4541B4
 LG2_cancel: .long 0x0C088940
+LG2_puff:   .long VAR_PUFF
 
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
 ! and 3 stack arguments), then the aim lines, trail and shot head on top.
@@ -4825,6 +4865,10 @@ hg_pdraw:
         mov.l   r0,@r1
         mov.l   LP_page1,r0
         mov.l   r0,@(4,r1)
+        mov.l   LP_page2,r0
+        mov.l   r0,@(8,r1)
+        mov.l   LP_page3,r0
+        mov.l   r0,@(12,r1)
         mov.l   LP_hgs,r8
         mov.b   @r8,r0
         extu.b  r0,r0
@@ -4948,9 +4992,82 @@ hg_pdraw:
         bra     .Lpd_seg
         add     #1,r8
 .Lpd_head:
+        mov.l   LP_puff,r11         ! launch cloud
+        mov     #HG_NPUFF,r8
+.Lpd_puff:
+        mov.b   @(4,r11),r0
+        extu.b  r0,r2               ! age
+        tst     r2,r2
+        bt      .Lpd_pn
+        mov     r2,r0               ! frame = min(age / 4, 7)
+        shlr2   r0
+        mov     #7,r1
+        cmp/hi  r1,r0
+        bf      .Lpd_pf
+        mov     r1,r0
+.Lpd_pf:
+        mov     r0,r1               ! def = hg_pdefs + frame x 12
+        shll2   r1
+        mov     r1,r0
+        add     r1,r1
+        add     r0,r1
+        mov.l   LP_pdefs,r0
+        add     r0,r1
+        mov     r1,r4
+        mov     r2,r0               ! alpha 0xF0 - age x 5
+        shll2   r0
+        add     r2,r0
+        mov.w   WP_f0,r6
+        sub     r0,r6
+        mov     r6,r0
+        shll8   r0
+        or      r0,r6
+        mov.l   LP_seg,r0
+        or      r0,r6
+        mov.w   @r11,r7             ! up
+        extu.w  r7,r7
+        shll16  r7
+        mov.w   @(2,r11),r0         ! across
+        extu.w  r0,r3
+        bsr     hg_one
+        shll16  r3
+.Lpd_pn:
+        dt      r8
+        bf/s    .Lpd_puff
+        add     #8,r11
         mov.l   @(16,r10),r0        ! VAR_HOBJ = -1: gone
         cmp/eq  #-1,r0
         bt      .Lpd_out
+        tst     r0,r0
+        bt      .Lpd_fly
+        mov     r9,r0               ! stuck: the red ball, frame (BT / 3) mod 9
+        mov.w   WP_third,r1
+        mulu.w  r1,r0
+        sts     macl,r0
+        shlr16  r0
+.Lpd_m9:
+        mov     #9,r1
+        cmp/hs  r1,r0
+        bf      .Lpd_b9
+        bra     .Lpd_m9
+        add     #-9,r0
+.Lpd_b9:
+        mov     r0,r1               ! def = hg_bdefs + frame x 12
+        shll2   r1
+        mov     r1,r0
+        add     r1,r1
+        add     r0,r1
+        mov.l   LP_bdefs,r0
+        add     r0,r1
+        mov     r1,r4
+        mov.w   WP_8000,r6
+        extu.w  r6,r6
+        mov.l   @(8,r10),r7
+        bsr     hg_one
+        mov.l   @(12,r10),r3
+        bra     .Lpd_out
+        nop
+.Lpd_fly:
         mov     r9,r0               ! frame BT & 7
         and     #7,r0
         mov     r0,r1
@@ -4997,10 +5114,16 @@ WP_third:   .word 0x5556
 WP_8000:    .word 0x8000
 WP_life:    .word HG_LIFE
 WP_ff:      .word 0xFF
+WP_f0:      .word 0xF0
         .align 2
 LP_btab:    .long 0x0C49CD60 + HG_BANK * 4
 LP_page0:   .long 0x0B000E00
 LP_page1:   .long 0x0C000E00
+LP_page2:   .long 0x0D000E00
+LP_page3:   .long 0x0E000E00
+LP_puff:    .long VAR_PUFF
+LP_pdefs:   .long hg_pdefs
+LP_bdefs:   .long hg_bdefs
 LP_hgs:     .long VAR_HGS
 LP_frame:   .long VAR_HFRM
 LP_opt:     .long 0x0C453630
@@ -5016,7 +5139,7 @@ LP_gdef:    .long hg_gdef
 LP_sdefs:   .long hg_sdefs
 LP_hdefs:   .long hg_hdefs
 LP_banks:   .long hg_banks
-hg_banks:   .word HG_BANK, HG_BANK + 1
+hg_banks:   .word HG_BANK, HG_BANK + 1, HG_BANK + 2, HG_BANK + 3
         .align 2
 ! defs (5 words + end): w0 = flags | bank list index + 1, w1 = src x << 8 | y
 ! in the page, w2 = offsets, w3 = (x size - 1) << 8 | (y size - 1), w4 = 0
@@ -5028,12 +5151,220 @@ hg_hdefs:                           ! shot head frames 0..7 (page 0, x 0x40..0x6
         .irp    f, 0,1,2,3,4,5,6,7
         .word   0x9801, (0x40 << 8) | (\f * 0x18), 0xE8F4, 0x2717, 0, 0
         .endr
+hg_bdefs:                           ! red ball frames 0..8 (page 2: 84 x 84 cells)
+        .irp    f, 0,1,2,3,4,5,6,7,8
+        .word   0x8003, ((4 + (\f % 3) * 84) << 8) | ((\f / 3) * 84), 0xD6D6, 0x5353, 0, 0
+        .endr
+hg_pdefs:                           ! smoke puff frames 0..7 (page 3: 32 x 32)
+        .irp    f, 0,1,2,3,4,5,6,7
+        .word   0x8004, \f * 32, 0xF0F0, 0x1F1F, 0, 0
+        .endr
 hg_ldef:                            ! aim line (page 1, x 0x00; y and length set when drawn)
         .word   0x8002, 0x0000, 0x00F4, 0x7F17, 0, 0
 hg_gdef:                            ! glow (page 1, x 0x80)
         .word   0x8002, 0x8000, 0x00F4, 0x7F17, 0, 0
+        .align 2
+
+! hg_upchunk (labels_blit, blitter idle): upload the next chunk (up to
+! HG_CHUNK pixels) of the next HADOUGUN graphics region: copy its rows from
+! the u4 (hg_regions) into hg_ubuf behind an upload command and run it.
+hg_upchunk:
+        sts.l   pr,@-r15
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov.l   r11,@-r15
+        mov.l   LU_hui,r11          ! r11 -> VAR_HUI
+        mov.b   @r11,r0
+        extu.b  r0,r0
+        mov     r0,r1               ! region entry = hg_regions + idx * 12
+        shll2   r1
+        mov     r1,r0
+        add     r1,r1
+        add     r0,r1
+        mov.l   LU_regs,r0
+        add     r0,r1
+        mov.l   @r1,r8              ! ROM address
+        mov.w   @(8,r1),r0
+        extu.w  r0,r9               ! w
+        mov.w   @(10,r1),r0
+        extu.w  r0,r10              ! h
+        mov.w   @(2,r11),r0
+        extu.w  r0,r2               ! row
+        mov     #0,r3               ! rows this chunk: as many as fit
+        mov     #0,r4
+        mov.w   WU_chunk,r5
+.Lu_fit:
+        add     r9,r4
+        cmp/hi  r5,r4
+        bt      .Lu_fitd
+        bra     .Lu_fit
+        add     #1,r3
+.Lu_fitd:
+        mov     r10,r0
+        sub     r2,r0               ! rows left
+        cmp/hi  r0,r3
+        bf      .Lu_n
+        mov     r0,r3
+.Lu_n:
+        mov.l   LU_buf,r6           ! header (uncached)
+        mov.w   WU_c000,r0
+        mov.w   r0,@r6
+        mov     #0,r0
+        mov.w   r0,@(2,r6)
+        mov.w   WU_2000,r0
+        mov.w   r0,@(4,r6)
+        mov     #0,r0
+        mov.w   r0,@(6,r6)
+        mov.w   WU_9999,r0
+        mov.w   r0,@(8,r6)
+        mov.w   r0,@(10,r6)
+        mov.w   @(4,r1),r0          ! dest x
+        mov.w   r0,@(12,r6)
+        mov.w   @(6,r1),r0          ! dest y + row
+        add     r2,r0
+        mov.w   r0,@(14,r6)
+        mov     r9,r0
+        add     #-1,r0
+        mov.w   r0,@(16,r6)
+        mov     r3,r0
+        add     #-1,r0
+        mov.w   r0,@(18,r6)
+        mov     r6,r7               ! pixels: copy w * rows words (as longs)
+        add     #20,r7
+        mov     r2,r0               ! source = ROM + row * w * 2
+        mulu.w  r9,r0
+        sts     macl,r0
+        add     r0,r0
+        add     r0,r8
+        mov     r9,r0
+        mulu.w  r3,r0
+        sts     macl,r4
+        shlr    r4                  ! longs
+.Lu_cp:
+        mov.l   @r8+,r0
+        mov.l   r0,@r7
+        dt      r4
+        bf/s    .Lu_cp
+        add     #4,r7
+        mov     #0,r0
+        mov.l   r0,@r7              ! end of list
+        add     r3,r2               ! next row / region
+        cmp/hs  r10,r2
+        bf      .Lu_st
+        mov.b   @r11,r0
+        add     #1,r0
+        mov.b   r0,@r11
+        mov     #0,r2
+.Lu_st:
+        mov     r2,r0
+        mov.w   r0,@(2,r11)
+        mov.l   LU_run,r1
+        jsr     @r1
+        mov     r6,r0
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+        .align 1
+WU_chunk:   .word HG_CHUNK
+WU_c000:    .word 0xC000
+WU_2000:    .word 0x2000
+WU_9999:    .word 0x9999
+        .align 2
+LU_hui:     .long VAR_HUI
+LU_regs:    .long hg_regions
+LU_buf:     .long hg_ubuf + 0xA0000000
+LU_run:     .long blt_run
+
+
+! hg_puffs (hg_logic, shot alive; r10 -> VAR_BX..): the launch cloud. Puffs
+! age and vanish after HG_PLIFE frames; while the shot flies (first
+! HG_PSPAWN frames) a new one is made every other frame at the head, up to
+! 12 px either side. Uses r0-r7.
+hg_puffs:
+        mov.l   LF_puff,r1
+        mov     #HG_NPUFF,r2
+.Lpf_age:
+        mov.b   @(4,r1),r0
+        extu.b  r0,r0
+        tst     r0,r0
+        bt      .Lpf_an
+        add     #1,r0
+        mov     #HG_PLIFE,r3
+        cmp/hs  r3,r0
+        bf      .Lpf_as
+        mov     #0,r0
+.Lpf_as:
+        mov.b   r0,@(4,r1)
+.Lpf_an:
+        dt      r2
+        bf/s    .Lpf_age
+        add     #8,r1
+        mov.l   @(16,r10),r0        ! only while flying
+        tst     r0,r0
+        bf      .Lpf_out
+        mov.l   LF_bt,r1
+        mov.w   @r1,r0
+        extu.w  r0,r0
+        mov     #HG_PSPAWN,r3
+        cmp/hs  r3,r0
+        bt      .Lpf_out
+        tst     #1,r0
+        bf      .Lpf_out
+        mov.l   LF_puff,r1          ! a free puff
+        mov     #HG_NPUFF,r2
+.Lpf_free:
+        mov.b   @(4,r1),r0
+        tst     r0,r0
+        bt      .Lpf_new
+        dt      r2
+        bf/s    .Lpf_free
+        add     #8,r1
+        bra     .Lpf_out
+        nop
+.Lpf_new:
+        mov.l   @(8,r10),r0         ! head up
+        shlr16  r0
+        mov.w   r0,@r1
+        mov.l   LF_rnd,r3           ! across: head + (random 0..24) - 12
+        mov.l   @r3,r0
+        mov.l   LF_mul,r4
+        mul.l   r4,r0
+        sts     macl,r0
+        add     #57,r0
+        mov.l   r0,@r3
+        shlr16  r0
+        mov     r0,r4
+        mov     #25,r5
+        mulu.w  r5,r4
+        sts     macl,r4
+        shlr16  r4                  ! 0..24
+        add     #-12,r4
+        mov.l   @(12,r10),r0
+        shlr16  r0
+        add     r4,r0
+        mov.w   r0,@(2,r1)
+        mov     #1,r0
+        mov.b   r0,@(4,r1)
+.Lpf_out:
+        rts
+        nop
+        .align 2
+LF_puff:    .long VAR_PUFF
+LF_bt:      .long VAR_BT
+LF_rnd:     .long VAR_PUFF + HG_NPUFF * 8
+LF_mul:     .long 1103515245
+
         .endif
 
+        .ifndef STANDALONE
+        .align 2
+hg_ubuf:    .space  24 + HG_CHUNK * 2 + 8
+        .endif
         .include "bar.inc"
         .include "labels.inc"
 _end:
