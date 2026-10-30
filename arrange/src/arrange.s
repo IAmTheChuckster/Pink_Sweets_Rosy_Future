@@ -91,6 +91,7 @@
         .set    VAR_HOBJ,   0x0C7E01EC      ! (u32) enemy the head is stuck to, 0 = flying
         .set    VAR_HSTK,   0x0C7E01F0      ! (word) frames stuck
         .set    VAR_HNSEG,  0x0C7E01F2      ! (word) trail segments dropped
+        .set    HG_SND,     0x29            ! launch sound (coin-in sound)
         .set    HG_CHARGE,  60              ! frames (1 s) to bring the options to the front
         .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
         .set    VAR_SHOTS,  0x0C7E0400      ! HADOUGUN shots: 4 x 32 bytes (BX, BY, HX, HY, HOBJ, HSTK.w, HNSEG.w, BT.w)
@@ -4619,6 +4620,9 @@ hg_logic:
         mov.l   r0,@(20,r1)         ! HSTK, HNSEG
         mov     #1,r0
         mov.w   r0,@(24,r1)         ! BT = 1
+        mov.l   LG2_sndfn,r0        ! launch sound: the game's sound 0x29
+        jsr     @r0                 ! (the one a coin makes), through its own
+        mov     #HG_SND,r4          ! "play sound" routine
 .Lhq_toback:
         mov     #3,r0
         bra     .Lhq_ang
@@ -5003,6 +5007,7 @@ LG2_cancel: .long 0x0C088940
 LG2_puff:   .long VAR_PUFF
 LG2_shots:  .long VAR_SHOTS
 LG2_hfc:    .long VAR_HFC
+LG2_sndfn:  .long 0x0C08B050
 LG2_nohit:  .long 0x20000000
 LG2_bhold:  .long VAR_BHOLD
 LG2_qpush:  .long q_push
