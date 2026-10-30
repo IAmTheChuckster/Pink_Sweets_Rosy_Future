@@ -93,11 +93,15 @@
         .set    VAR_HNSEG,  0x0C7E01F2      ! (word) trail segments dropped
         .set    HG_CHARGE,  60              ! frames (1 s) to bring the options to the front
         .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
+        .set    VAR_SHOTS,  0x0C7E0400      ! HADOUGUN shots: 4 x 32 bytes (BX, BY, HX, HY, HOBJ, HSTK.w, HNSEG.w, BT.w)
+        .set    HG_NSHOT,   4
+        .set    VAR_HFC,    0x0C7E0590      ! (u32) logic frame counter
+        .set    VAR_HDRAWN, 0x0C7E0594      ! (u32) frame the effects were last drawn
         .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
         .set    VAR_HUR,    0x0C7E01FA      ! (word) ... next row of it
         .set    VAR_BHOLD,  0x0C7E01F9      ! frames B has been held (with HADOUGUN stock)
         .set    HG_TAP,     15              ! a B tap (cracker) is shorter than this; longer charges
-        .set    VAR_PUFF,   0x0C7E0200      ! launch cloud: 32 puffs x 8 bytes (up, across words; age byte, 0 = free)
+        .set    VAR_PUFF,   0x0C7E0480      ! launch cloud: 32 puffs x 8 bytes (right after VAR_SHOTS) (up, across words; age byte, 0 = free)
         .set    HG_NPUFF,   32
         .set    HG_PLIFE,   90              ! frames a puff lasts
         .set    HG_PSPAWN,  60              ! puffs are made for this many frames after the launch
@@ -314,7 +318,13 @@ L_dext: .long   0x0C3B0A7C
         mov     #0,r0
         mov.l   L_hgs,r1
         mov.w   r0,@r1              ! VAR_HGS, VAR_HGT
-        mov.w   r0,@(6,r1)          ! VAR_BT
+        mov.l   L_shots,r1          ! no shots, no puffs
+        mov     #HG_NSHOT * 8 + HG_NPUFF * 2,r2
+.Lclr_shot:
+        mov.l   r0,@r1
+        dt      r2
+        bf/s    .Lclr_shot
+        add     #4,r1
         .endif
         mov.l   L_kills,r1
         mov.l   r0,@r1              ! VAR_KILLS
@@ -407,6 +417,7 @@ L_hpobj:    .long VAR_HPOBJ
 L_hadou:    .long VAR_HADOU
 L_hgs:      .long VAR_HGS
 L_hui:      .long VAR_HUI
+L_shots:    .long VAR_SHOTS
 menu_strs:
         .ifdef  STANDALONE
         .ascii  "            "
@@ -2909,6 +2920,16 @@ arr_spr:
         mov.l   LS_pdraw,r1
         cmp/eq  r1,r0
         bt      .Ls_hg
+        mova    LS_after,r0         ! drawn after the ship: if it wasn't drawn
+        mov     r0,r1               ! this frame, the HADOUGUN effects go here
+        sts     pr,r0
+        mov     #4,r2
+.Ls_af:
+        mov.l   @r1+,r3
+        cmp/eq  r3,r0
+        bt      .Ls_fx
+        dt      r2
+        bf      .Ls_af
         mov.l   LS_odraw,r1
         cmp/eq  r1,r0
         bf      .Ls_orig
@@ -2922,7 +2943,24 @@ arr_spr:
         mov.l   LS_hgdraw,r0
         jmp     @r0
         nop
+.Ls_fx:
+        sts.l   pr,@-r15
+        mov.l   r4,@-r15
+        mov.l   r5,@-r15
+        mov.l   r6,@-r15
+        mov.l   r7,@-r15
+        mov.l   LS_hgfx,r0
+        jsr     @r0
+        nop
+        mov.l   @r15+,r7
+        mov.l   @r15+,r6
+        mov.l   @r15+,r5
+        mov.l   @r15+,r4
+        bra     .Ls_orig
+        lds.l   @r15+,pr
         .align 2
+LS_after:   .long 0x0C08833C, 0x0C0890B6, 0x0C089744, 0x0C0838DC
+LS_hgfx:    .long hg_fx
 LS_pdraw:   .long 0x0C07E7E2        ! return address of the ship's sprite call
 LS_odraw:   .long 0x0C0813CC        ! ... and of the options' sprite call
 LS_hadou:   .long VAR_HADOU
@@ -4481,15 +4519,15 @@ hg_logic:
         mov.l   WG2_alive,r2
         cmp/eq  r2,r0
         bt      .Lhq_alive
-        mov.b   @r8,r0              ! not alive: drop the charge, options back
-        tst     r0,r0
-        bt      .Lhq_beam
-        mov     #0,r0
-        mov.b   r0,@r8
-        bsr     hg_setang
-        mov.b   r0,@(1,r8)
+        mov.b   @r8,r0              ! not alive: drop the charge; the options swing
+        cmp/eq  #1,r0               ! back once alive again (they aren't touched
+        bt      .Lhq_dch            ! while the ship is dead)
+        cmp/eq  #2,r0
+        bf      .Lhq_beam
+.Lhq_dch:
+        mov     #3,r0
         bra     .Lhq_beam
-        nop
+        mov.b   r0,@r8
 .Lhq_alive:
         mov.l   LG2_prev,r1
         mov.b   @r1,r4
@@ -4553,24 +4591,34 @@ hg_logic:
         mov.l   LG2_ahead,r3
         add     r3,r2
         mov.l   @(28,r1),r3         ! ship, across
-        mov.l   LG2_bx,r1
-        mov.l   r2,@r1              ! VAR_BX
+        mov.l   LG2_shots,r1        ! a free shot slot, else the oldest
+        mov     r1,r5
+        mov     #0,r6               ! oldest BT
+        mov     #HG_NSHOT,r7
+.Lhq_fs:
+        mov.w   @(24,r1),r0
+        extu.w  r0,r0
+        tst     r0,r0
+        bt      .Lhq_fsok
+        cmp/hi  r6,r0
+        bf      .Lhq_fsn
+        mov     r0,r6
+        mov     r1,r5
+.Lhq_fsn:
+        dt      r7
+        bf/s    .Lhq_fs
+        add     #32,r1
+        mov     r5,r1
+.Lhq_fsok:
+        mov.l   r2,@r1              ! BX
         mov.l   r3,@(4,r1)          ! VAR_BY
         mov.l   r2,@(8,r1)          ! VAR_HX
         mov.l   r3,@(12,r1)         ! VAR_HY
         mov     #0,r0
         mov.l   r0,@(16,r1)         ! VAR_HOBJ: flying
-        mov.l   r0,@(20,r1)         ! VAR_HSTK, VAR_HNSEG
-        mov.l   LG2_puff,r1         ! no puffs left from the last shot
-        mov     #HG_NPUFF,r2
-        mov     #0,r0
-.Lhq_pclr:
-        mov.b   r0,@(4,r1)
-        dt      r2
-        bf/s    .Lhq_pclr
-        add     #8,r1
+        mov.l   r0,@(20,r1)         ! HSTK, HNSEG
         mov     #1,r0
-        mov.w   r0,@(6,r8)          ! VAR_BT = 1
+        mov.w   r0,@(24,r1)         ! BT = 1
 .Lhq_toback:
         mov     #3,r0
         bra     .Lhq_ang
@@ -4589,11 +4637,35 @@ hg_logic:
         bsr     hg_setang
         nop
 .Lhq_beam:
-        mov.w   @(6,r8),r0          ! VAR_BT
+        mov.l   LG2_hfc,r1          ! logic frame counter (hg_fx draws once per frame)
+        mov.l   @r1,r0
+        add     #1,r0
+        mov.l   r0,@r1
+        bsr     hg_puffage
+        nop
+        mov.l   LG2_shots,r10
+        mov     #HG_NSHOT,r8
+.Lhq_sl:
+        mov.l   r8,@-r15
+        mov.l   r10,@-r15
+        bsr     hg_shot
+        nop
+        mov.l   @r15+,r10
+        mov.l   @r15+,r8
+        dt      r8
+        bf/s    .Lhq_sl
+        add     #32,r10
+        bra     .Lhq_out
+        nop
+
+! hg_shot (hg_logic): one HADOUGUN shot, r10 -> its slot. Uses r0-r11.
+hg_shot:
+        sts.l   pr,@-r15
+        mov.w   @(24,r10),r0        ! BT
         extu.w  r0,r9
         tst     r9,r9
         bf      .Lhq_bt0
-        bra     .Lhq_out
+        bra     .Lhs_out
         nop
 .Lhq_bt0:
         add     #1,r9
@@ -4603,13 +4675,12 @@ hg_logic:
         mov     #0,r9
 .Lhq_bt:
         mov     r9,r0
-        mov.w   r0,@(6,r8)
+        mov.w   r0,@(24,r10)
         tst     r9,r9
         bf      .Lhq_live
-        bra     .Lhq_out
+        bra     .Lhs_out
         nop
 .Lhq_live:
-        mov.l   LG2_bx,r10          ! r10 -> VAR_BX..
         ! --- the head: flying, stuck or gone ---
         mov.l   @(16,r10),r1        ! VAR_HOBJ
         tst     r1,r1
@@ -4678,9 +4749,12 @@ hg_logic:
         mov.l   LG2_enemy,r11
         mov     #0,r9
 .Lhq_hit:
-        mov.l   @r11,r0             ! alive with HP left
+        mov.l   @r11,r0             ! alive, can be hit, HP left
         tst     r0,r0
         bt      .Lhq_hnext
+        mov.l   LG2_nohit,r1
+        tst     r1,r0
+        bf      .Lhq_hnext
         mov.l   WG2_44,r0
         mov.w   @(r0,r11),r0
         tst     r0,r0
@@ -4737,7 +4811,7 @@ hg_logic:
         mov.w   @(22,r10),r0
         extu.w  r0,r7
         tst     r7,r7
-        bt      .Lhq_out
+        bt      .Lhs_out
         ! trail hit range on the up axis: BX - 8 .. BX + 12 n + 8
         mov.l   @r10,r6
         mov.l   LG2_8,r0
@@ -4803,7 +4877,7 @@ hg_logic:
         mov.l   LG2_bbase,r0
         mov.l   @r0,r0
         cmp/hi  r0,r9
-        bf      .Lhq_out
+        bf      .Lhs_out
         add     #-4,r9
         mov.l   @r9,r10
         mov.l   @r10,r0             ! a live bullet (bit 31)
@@ -4846,6 +4920,10 @@ hg_logic:
         mov.l   @r15+,r9
 .Lhq_blnext:
         bra     .Lhq_bl
+        nop
+.Lhs_out:
+        lds.l   @r15+,pr
+        rts
         nop
 .Lhq_out:
         mov.l   @r15+,r11
@@ -4923,6 +5001,9 @@ LG2_dmgfn:  .long 0x0C084F10
 LG2_bul:    .long 0x0C4541B4
 LG2_cancel: .long 0x0C088940
 LG2_puff:   .long VAR_PUFF
+LG2_shots:  .long VAR_SHOTS
+LG2_hfc:    .long VAR_HFC
+LG2_nohit:  .long 0x20000000
 LG2_bhold:  .long VAR_BHOLD
 LG2_qpush:  .long q_push
 LG2_btop:   .long 0x0C5C178C
@@ -4946,6 +5027,36 @@ hg_pdraw:
         mov.l   r0,@(8,r15)
         bsr     hg_spr              ! the ship
         nop
+        bsr     hg_fx               ! then the HADOUGUN effects (once a frame)
+        nop
+        add     #12,r15
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+
+! hg_fx: the HADOUGUN effects (aim lines, smoke, trails, heads/balls), at
+! most once a frame: from the ship's sprite call, or, when the ship isn't
+! drawn (dead, respawning), from the first sprite call after its place.
+hg_fx:
+        mov.l   LP_hfc,r1
+        mov.l   @r1,r0
+        mov.l   @(4,r1),r2          ! VAR_HDRAWN
+        cmp/eq  r0,r2
+        bf      .Lfx_go
+        rts
+        nop
+.Lfx_go:
+        mov.l   r0,@(4,r1)
+        sts.l   pr,@-r15
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov.l   r11,@-r15
+        add     #-12,r15            ! sprite routine stack arguments (hg_one)
         mov.l   LP_btab,r1          ! our VRAM pages in the bank table
         mov.l   LP_page0,r0
         mov.l   r0,@r1
@@ -5019,14 +5130,78 @@ hg_pdraw:
         bf/s    .Lpd_lone
         add     #60,r10
 .Lpd_beam:
-        mov.l   LP_hgs,r8
-        mov.w   @(6,r8),r0          ! VAR_BT
+        mov.l   LP_puff,r11         ! launch cloud
+        mov     #HG_NPUFF,r8
+.Lpd_puff:
+        mov.b   @(4,r11),r0
+        extu.b  r0,r2               ! age
+        tst     r2,r2
+        bt      .Lpd_pn
+        mov     r2,r0               ! frame = min(age / 8, 7)
+        shlr2   r0
+        shlr    r0
+        mov     #7,r1
+        cmp/hi  r1,r0
+        bf      .Lpd_pf
+        mov     r1,r0
+.Lpd_pf:
+        mov     r0,r1               ! def = hg_pdefs + frame x 12
+        shll2   r1
+        mov     r1,r0
+        add     r1,r1
+        add     r0,r1
+        mov.l   LP_pdefs,r0
+        add     r0,r1
+        mov     r1,r4
+        mov     r2,r0               ! additive, alpha 0xC0 - age x 2
+        add     r2,r0
+        mov.w   WP_c0,r6
+        sub     r0,r6
+        mov     r6,r0
+        shll8   r0
+        or      r0,r6
+        mov.l   LP_add,r0
+        or      r0,r6
+        mov.w   @r11,r7             ! up
+        extu.w  r7,r7
+        shll16  r7
+        mov.w   @(2,r11),r0         ! across
+        extu.w  r0,r3
+        bsr     hg_one
+        shll16  r3
+.Lpd_pn:
+        dt      r8
+        bf/s    .Lpd_puff
+        add     #8,r11
+        mov.l   LP_shots,r10        ! the shots
+        mov     #HG_NSHOT,r8
+.Lpd_sl:
+        mov.l   r8,@-r15
+        mov.l   r10,@-r15
+        bsr     hg_fxshot
+        nop
+        mov.l   @r15+,r10
+        mov.l   @r15+,r8
+        dt      r8
+        bf/s    .Lpd_sl
+        add     #32,r10
+        add     #12,r15
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+
+hg_fxshot:                          ! one shot's trail and head/ball, r10 -> slot
+        sts.l   pr,@-r15
+        add     #-12,r15
+        mov.w   @(24,r10),r0        ! BT
         extu.w  r0,r9
         tst     r9,r9
         bt      .Lpd_out
-        mov.l   LP_bx,r10           ! r10 -> VAR_BX..
-        mov.l   LP_nseg,r1
-        mov.w   @r1,r0
+        mov.w   @(22,r10),r0
         extu.w  r0,r11              ! segments dropped
         ! trail: segment i at BX + 12 i, dropped at BT ~ 3 i
         mov     #0,r8
@@ -5094,49 +5269,6 @@ hg_pdraw:
         bra     .Lpd_seg
         add     #1,r8
 .Lpd_head:
-        mov.l   LP_puff,r11         ! launch cloud
-        mov     #HG_NPUFF,r8
-.Lpd_puff:
-        mov.b   @(4,r11),r0
-        extu.b  r0,r2               ! age
-        tst     r2,r2
-        bt      .Lpd_pn
-        mov     r2,r0               ! frame = min(age / 8, 7)
-        shlr2   r0
-        shlr    r0
-        mov     #7,r1
-        cmp/hi  r1,r0
-        bf      .Lpd_pf
-        mov     r1,r0
-.Lpd_pf:
-        mov     r0,r1               ! def = hg_pdefs + frame x 12
-        shll2   r1
-        mov     r1,r0
-        add     r1,r1
-        add     r0,r1
-        mov.l   LP_pdefs,r0
-        add     r0,r1
-        mov     r1,r4
-        mov     r2,r0               ! additive, alpha 0xC0 - age x 2
-        add     r2,r0
-        mov.w   WP_c0,r6
-        sub     r0,r6
-        mov     r6,r0
-        shll8   r0
-        or      r0,r6
-        mov.l   LP_add,r0
-        or      r0,r6
-        mov.w   @r11,r7             ! up
-        extu.w  r7,r7
-        shll16  r7
-        mov.w   @(2,r11),r0         ! across
-        extu.w  r0,r3
-        bsr     hg_one
-        shll16  r3
-.Lpd_pn:
-        dt      r8
-        bf/s    .Lpd_puff
-        add     #8,r11
         mov.l   @(16,r10),r0        ! VAR_HOBJ = -1: gone
         cmp/eq  #-1,r0
         bt      .Lpd_out
@@ -5164,8 +5296,7 @@ hg_pdraw:
         mov     r1,r4
         mov.w   WP_8000,r6
         extu.w  r6,r6
-        mov.l   LP_hstk,r0          ! fading out: alpha = frames left x 4
-        mov.w   @r0,r0
+        mov.w   @(20,r10),r0        ! fading out: alpha = frames left x 4
         extu.w  r0,r1
         mov.w   WP_bfade,r0
         cmp/hs  r0,r1
@@ -5202,10 +5333,6 @@ hg_pdraw:
         mov.l   @(12,r10),r3
 .Lpd_out:
         add     #12,r15
-        mov.l   @r15+,r11
-        mov.l   @r15+,r10
-        mov.l   @r15+,r9
-        mov.l   @r15+,r8
         lds.l   @r15+,pr
         rts
         nop
@@ -5243,7 +5370,6 @@ LP_page1:   .long 0x0C000E00
 LP_page2:   .long 0x0D000E00
 LP_page3:   .long 0x0E000E00
 LP_puff:    .long VAR_PUFF
-LP_hstk:    .long VAR_HSTK
 LP_add:     .long 0x02070000
 LP_pdefs:   .long hg_pdefs
 LP_bdefs:   .long hg_bdefs
@@ -5253,8 +5379,8 @@ LP_opt:     .long 0x0C453630
 LP_flip:    .long HG_FLIP
 LP_blend:   .long 0x02078000
 LP_seg:     .long 0x02040000
-LP_bx:      .long VAR_BX
-LP_nseg:    .long VAR_HNSEG
+LP_shots:   .long VAR_SHOTS
+LP_hfc:     .long VAR_HFC
 LP_tint:    .long 0x00808080
 LP_ret:     .long 0x0C07C21C
 LP_ldef:    .long hg_ldef
@@ -5408,7 +5534,7 @@ LU_run:     .long blt_run
 ! age and vanish after HG_PLIFE frames; while the shot flies (first
 ! HG_PSPAWN frames) a new one is made every other frame at the head, up to
 ! 12 px either side. Uses r0-r7.
-hg_puffs:
+hg_puffage:                         ! (once a frame) puffs age, vanish after HG_PLIFE
         mov.l   LF_puff,r1
         mov     #HG_NPUFF,r2
 .Lpf_age:
@@ -5427,11 +5553,13 @@ hg_puffs:
         dt      r2
         bf/s    .Lpf_age
         add     #8,r1
+        rts
+        nop
+hg_puffs:                           ! (per shot, r10 -> slot) new puffs at the head
         mov.l   @(16,r10),r0        ! only while flying
         tst     r0,r0
         bf      .Lpf_out
-        mov.l   LF_bt,r1
-        mov.w   @r1,r0
+        mov.w   @(24,r10),r0
         extu.w  r0,r0
         mov     #HG_PSPAWN,r3
         cmp/hs  r3,r0
@@ -5476,7 +5604,6 @@ hg_puffs:
         nop
         .align 2
 LF_puff:    .long VAR_PUFF
-LF_bt:      .long VAR_BT
 LF_rnd:     .long VAR_PUFF + HG_NPUFF * 8
 LF_mul:     .long 1103515245
 
