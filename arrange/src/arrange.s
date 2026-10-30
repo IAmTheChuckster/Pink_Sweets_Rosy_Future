@@ -779,9 +779,6 @@ arr_frame:
         mov.l   L3_bscan,r0         ! boss or midboss alive? (the cracker leaves them alone)
         jsr     @r0
         nop
-        mov.l   L3_bhud,r0          ! its timer and HP (standalone: Rosy Future's HUD isn't
-        jsr     @r0                 ! here; combined: timer under the stage name, health bar)
-        nop
         mov.l   L3_p1,r1
         mov.w   @r1,r0
         tst     r0,r0
@@ -834,6 +831,9 @@ arr_frame:
         dt      r2
         bf/s    .Lzb
         add     #4,r1
+        mov.l   L3_bhud,r0          ! boss timer and HP (standalone: Rosy Future's HUD isn't
+        jsr     @r0                 ! here; combined: timer under RANK, health bar), after
+        nop                         ! the ZAN text is cleared (same row)
         mov.l   L3_meter,r0         ! tick-points fill the rose cracker meter
         jsr     @r0
         nop
@@ -4006,8 +4006,8 @@ LH_blank2:  .long bhud2_blank
 !==================================================================
 ! bhud2 (combined, Rosy's Arrange; boss_hud jumps here with pr saved on the
 ! stack): Rosy Future's timer and HP on the right (rows 37/36, cols 19..29)
-! are blanked; the timer "sss.t" goes under the stage name (row 36, cols
-! 13..17) and the health is a bar under it (row 35, cols 11..19: 9 cells,
+! are blanked; the timer "sss.t" goes under the RANK value (row 38, cols
+! 25..29) and the health is a bar under it (row 37, cols 21..29: 9 cells,
 ! 70 px of fill between a white outline, see build.py bar_inc). The bar is
 ! the health against the highest health seen for this object (start of the
 ! fight or of a phase): green above 30, yellow 16..30, red 15 and below.
@@ -4174,19 +4174,12 @@ bhud2_clear:
         dt      r7
         bf/s    .Lb2_cl1
         add     #4,r3
-        mov.l   LH2_row36,r1
+        mov.l   LH2_row36,r1        ! timer field (row 38, cols 25..29)
         mov     #5,r7
 .Lb2_cl2:
         mov.l   r0,@r1
         dt      r7
         bf/s    .Lb2_cl2
-        add     #4,r1
-        mov.l   LH2_row35,r1
-        mov     #9,r7
-.Lb2_cl3:
-        mov.l   r0,@r1
-        dt      r7
-        bf/s    .Lb2_cl3
         add     #4,r1
         rts
         nop
@@ -4195,8 +4188,8 @@ WH2_chr:    .word BAR_CHR
 WH2_digc:   .word BAR_DIGC
 WH2_44:     .word 0x44
         .align 2
-LH2_row36:  .long TEXT + 36*0x80 + 13*4
-LH2_row35:  .long TEXT + 35*0x80 + 11*4
+LH2_row36:  .long TEXT + 38*0x80 + 25*4    ! timer: under the RANK value
+LH2_row35:  .long TEXT + 37*0x80 + 21*4    ! bar: right-aligned under the timer
 LH2_hpmax:  .long VAR_HPMAX
 LH2_hpobj:  .long VAR_HPOBJ
 LH2_pow3:   .long hpow3
@@ -4204,7 +4197,7 @@ LH2_row37:  .long TEXT + 37*0x80 + 19*4
 LH2_row36r: .long TEXT + 36*0x80 + 19*4
 LH2_blank:  .long 0x80808020
 LH2_white:  .long 0x80808000
-LH2_dirty:  .long DIRTY + 35
+LH2_dirty:  .long DIRTY + 36
         .endif
 
         .ifndef STANDALONE
