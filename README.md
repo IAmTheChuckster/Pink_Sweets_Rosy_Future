@@ -43,13 +43,13 @@ I did all the testing and planning.
 | Original `pinkswts_u4` (required) | `5d812c9e` |
 | Patched `pinkswtsrf_u4` | `01a0d6ae` |
 
-Only the u4 changes: the patched program is saved as `pinkswtsrf_u4` in `pinkswtsfe.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsfe.zip` with `Pink Sweets Rosy Future.mra` (in [`mister/`](mister/), also offered by both patchers).
+Only the u4 changes: the patched program is saved as `pinkswtsrf_u4` in `pinkswtsrf.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsrf.zip` with `Pink Sweets Rosy Future.mra` (in [`mister/`](mister/), also offered by both patchers).
 
 ### Web patcher
 
 Open the **[Pink Sweets Forever Patcher](https://iamthechuckster.github.io/Pink_Sweets_Forever/)** and drop in `pinkswts.zip` (the 4 files only, no subfolders). You can also drop a loose `pinkswts_u4`.
 
-The page checks that `pinkswts_u4` is the original and that the result is `01a0d6ae` before offering `pinkswtsfe.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
+The page checks that `pinkswts_u4` is the original and that the result is `01a0d6ae` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
 
 ### Python patcher
 
@@ -57,7 +57,7 @@ Python 3, standard library only. Repacking the game program takes about a minute
 
 ```
 python3 pinkswts_patch.py pinkswts.zip          # writes pinkswtsrf_u4 next to the zip
-python3 pinkswts_patch.py pinkswts.zip --zip    # also writes pinkswtsfe.zip and Pink Sweets Rosy Future.mra
+python3 pinkswts_patch.py pinkswts.zip --zip    # also writes pinkswtsrf.zip and Pink Sweets Rosy Future.mra
 python3 pinkswts_patch.py pinkswts_u4           # patches a loose file -> pinkswtsrf_u4
 python3 pinkswts_patch.py pinkswts.zip -o OUT   # choose the output file
 ```
