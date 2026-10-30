@@ -175,6 +175,7 @@ STANDALONE_PATCHES = [
 # (char k at VRAM x = 0x8F8 - (k >> 5) * 8, y = (k & 31) * 8, stored rotated
 # 90 deg clockwise).
 BAR_CHAR = 0x400
+HADOU_CHAR = 0x500                # stock icon strips
 BAR_DIGC = 0x460                  # countdown cells (after the 3 x 32 bar chars)
 BAR_COLOURS = [(40, 220, 60), (240, 220, 40), (230, 30, 30)]   # green, yellow, red
 
@@ -238,20 +239,83 @@ def bar_inc():
                     r, g, b_, al = tile.getpixel((xx, yy))
                     w = ((r >> 3) << 10) | ((g >> 3) << 5) | (b_ >> 3)
                     vram[(vx + xx, vy + yy)] = (w | 0x8000) if al else 0
+    # HADOUGUN stock icons (data/hadougun.gif, the user's own art) 17 x 20, as
+    # four 9 x 3-cell strips (1..4 icons, left-aligned, 1 px apart) for the
+    # lower left of the text layer: char HADOU_CHAR + (n - 1) * 32 + row * 9 + col
+    ic = Image.open(os.path.join(HERE, "data", "hadougun.gif")).convert("RGBA")
+    ic = ic.crop(ic.getbbox()).resize((17, 20), Image.LANCZOS)
+    ic.putalpha(ic.split()[3].point(lambda v: 255 if v > 110 else 0))
+    for n in range(1, 5):
+        strip = Image.new("RGBA", (72, 24), (0, 0, 0, 0))
+        for i in range(n):
+            strip.alpha_composite(ic, (1 + i * 18, 0))
+        for t in range(27):
+            k = HADOU_CHAR + (n - 1) * 32 + t
+            tc, tr = t % 9, t // 9
+            tile = strip.crop((tc * 8, tr * 8, tc * 8 + 8, tr * 8 + 8)).rotate(-90)
+            vx, vy = 0x8F8 - (k >> 5) * 8, (k & 31) * 8
+            for yy in range(8):
+                for xx in range(8):
+                    r, g, b_, al = tile.getpixel((xx, yy))
+                    w = ((r >> 3) << 10) | ((g >> 3) << 5) | (b_ >> 3)
+                    vram[(vx + xx, vy + yy)] = (w | 0x8000) if al else 0
     x0 = min(x for x, y in vram); x1 = max(x for x, y in vram)
     y0 = min(y for x, y in vram); y1 = max(y for x, y in vram)
     words = [0xC000, 0x0000, 0x2000, 0x0000, 0x9999, 0x9999, x0, y0, x1 - x0, y1 - y0]
     for y in range(y0, y1 + 1):
         for x in range(x0, x1 + 1):
             words.append(vram.get((x, y), 0))
-    words += [0x0000, 0x0000]
     if len(words) % 2:
         words.append(0)
     lines = ["        .align 2", "bar_list:"]
     for i in range(0, len(words), 8):
         lines.append("        .word " + ",".join(f"0x{w:04X}" for w in words[i:i + 8]))
-    lines += ["        .align 2", ""]
+    # HADOUGUN graphics from Ibara (see HG_REGIONS), uploaded in the same list
+    for r in HG_REGIONS:
+        lines.append("        .word 0x2000,0x0000,0x9999,0x9999,0x%04X,0x%04X,0x%04X,0x%04X"
+                     % (r["dx"], r["dy"], r["w"] - 1, r["h"] - 1))
+        lines.append("hgpix_%s:" % r["name"])
+        px = hg_pixels(r)
+        for i in range(0, len(px), 16):
+            lines.append("        .byte " + ",".join("0x%02X" % b for b in px[i:i + 16]))
+    lines += ["        .word 0x0000,0x0000", "        .align 2", ""]
     return "\n".join(lines)
+
+
+# ---- HADOUGUN graphics (from the player's own Ibara, set ibarao) -------------
+# Ibara keeps the HADO-GUN sprite pages raw in u2 (big-endian ARGB1555, bit 15
+# = opaque, 256-px rows, 512-byte stride). Each region: page offset in u2,
+# source x/y/w/h in the page, destination in Pink Sweets' free VRAM (x 0xB00..,
+# y 0xE00..). The repo holds no pixels: build.py fills them only when IBARA_U2
+# names Ibara's u2; the patchers fill them from ibara.zip (IBARA_FILL).
+IBARA_U2_CRC = 0x55840976
+HG_REGIONS = [
+    # trail segments: 16 frames of 16 x 32 (Ibara VRAM 0x1EE0,0)
+    dict(name="seg",   page=3548184, sx=0xE0, sy=0x00, w=32,  h=256, dx=0xB00, dy=0xE00),
+    # shot head: 8 frames of 40 x 24 (Ibara 0x800,0x100 + 0x28)
+    dict(name="head",  page=4203644, sx=0x28, sy=0x00, w=40,  h=192, dx=0xB40, dy=0xE00),
+    # dotted aim line, 1 frame of 128 x 24 (Ibara 0xA00/0xB00,0x100)
+    dict(name="line0", page=5514564, sx=0x00, sy=0xA8, w=128, h=24,  dx=0xC00, dy=0xE00),
+    # glow around the line (Ibara 0x900,0x100)
+    dict(name="glow0", page=5383472, sx=0x80, sy=0xA8, w=128, h=24,  dx=0xC80, dy=0xE00),
+]
+
+
+def hg_rows(r):
+    """(u2 offset, byte count) of each source row of a region."""
+    return [(r["page"] + (r["sy"] + y) * 512 + r["sx"] * 2, r["w"] * 2) for y in range(r["h"])]
+
+
+def hg_pixels(r):
+    u2 = os.environ.get("IBARA_U2")
+    if not u2:
+        return bytes(r["w"] * r["h"] * 2)
+    with open(u2, "rb") as f:
+        out = b""
+        for off, n in hg_rows(r):
+            f.seek(off)
+            out += f.read(n)
+    return out
 
 
 def _warning(block):
@@ -463,6 +527,8 @@ def main():
             sys.exit("Rosy Future HUD code at 0x100000 not found")
 
     code, syms = assemble(standalone)
+    if len(code) > 0x20000:
+        sys.exit(f"patch is {len(code)} bytes: it would overlap the variables at RAM 0x0C7E0000")
     region = rom[CODE_OFF:CODE_OFF + len(code)]
     if set(region) != {0xFF} and region != code:
         sys.exit("0x101000 is not free; refusing to overwrite")
@@ -482,6 +548,11 @@ def main():
     print(f"code 0x{CODE_OFF:X}-0x{CODE_OFF + len(code):X} ({len(code)} bytes)")
     for k in ("boot_patch", "title_menu5", "arr_input", "arr_frame"):
         print(f"  {k:12s} 0x{syms[k]:08X}")
+    if not standalone:
+        # Ibara graphics fill map for the patchers: u4 offset, u2 offset, bytes per row, rows
+        for r in HG_REGIONS:
+            u4off = CODE_OFF + syms["hgpix_" + r["name"]] - RAM_BASE
+            print(f"IBARA_FILL {u4off} {r['page'] + r['sy'] * 512 + r['sx'] * 2} {r['w'] * 2} {r['h']}")
     print("wrote", sys.argv[2])
 
 

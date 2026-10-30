@@ -76,6 +76,24 @@
         .set    VAR_HPOBJ,  0x0C7E01D0      ! (combined, u32) object VAR_HPMAX belongs to
         .set    BAR_CHR,    0x400           ! first text char of the bar tiles (build.py bar_inc)
         .set    BAR_DIGC,   0x460           ! red middle cells with the countdown 1..15 (build.py)
+        .set    VAR_HADOU,  0x0C7E01CB      ! (combined) HADOUGUN stock 0..4
+        .set    VAR_HLIVES, 0x0C7E01CC      ! (combined) P1 lives + 1 last frame (0 = not known yet)
+        .set    HADOU_MAX,  4
+        .set    HADOU_CHR,  0x500           ! first text char of the stock icon strips (build.py)
+        .set    VAR_HGS,    0x0C7E01D4      ! HADOUGUN state: 0 idle, 1 charging, 2 ready, 3 options going back
+        .set    VAR_HGT,    0x0C7E01D5      ! charge frames 0..HG_CHARGE
+        .set    VAR_HGO,    0x0C7E01D6      ! (2 x word) the options' own angles, kept while idle
+        .set    VAR_BT,     0x0C7E01DA      ! (word) frames since the shot was fired, 0 = none
+        .set    VAR_BX,     0x0C7E01DC      ! (u32) shot start, up axis (16.16, draw coordinates)
+        .set    VAR_BY,     0x0C7E01E0      ! (u32) shot column, across axis (16.16)
+        .set    VAR_HX,     0x0C7E01E4      ! (u32) shot head, up axis (16.16)
+        .set    VAR_HY,     0x0C7E01E8      ! (u32) shot head, across axis (16.16)
+        .set    VAR_HOBJ,   0x0C7E01EC      ! (u32) enemy the head is stuck to, 0 = flying
+        .set    VAR_HSTK,   0x0C7E01F0      ! (word) frames stuck
+        .set    VAR_HNSEG,  0x0C7E01F2      ! (word) trail segments dropped
+        .set    HG_CHARGE,  120             ! frames to bring the options to the front
+        .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
+        .set    HG_FLIP,    0x80000000      ! sprite flip for the aim lines (point them up)
         .set    VAR_MODEAPP,0x0C7E01C8      ! (combined build) 1 = the Rosy Arrange code changes are in the program
         .set    RF_MENU,    0xA0100498      ! Rosy Future's 5-entry title menu (sets VAR_SEL / VAR_FLAG / MODE_SEL)
         .set    VAR_CRKHOLD,0x0C7E01BE      ! frames left of "the rose cracker is busy": an empty
@@ -277,6 +295,14 @@ L_dext: .long   0x0C3B0A7C
         mov     #0,r0
         mov.l   L_hpobj,r1
         mov.l   r0,@r1
+        mov.l   L_hadou,r1          ! HADOUGUN: a new game starts with 1, no shot
+        mov.b   r0,@(1,r1)          ! VAR_HLIVES = 0
+        mov     #1,r0
+        mov.b   r0,@r1              ! VAR_HADOU = 1
+        mov     #0,r0
+        mov.l   L_hgs,r1
+        mov.w   r0,@r1              ! VAR_HGS, VAR_HGT
+        mov.w   r0,@(6,r1)          ! VAR_BT
         .endif
         mov.l   L_kills,r1
         mov.l   r0,@r1              ! VAR_KILLS
@@ -366,6 +392,8 @@ L_mapply:   .long mode_apply
 L_pend:     .long VAR_PEND
 L_bup:      .long VAR_BUP
 L_hpobj:    .long VAR_HPOBJ
+L_hadou:    .long VAR_HADOU
+L_hgs:      .long VAR_HGS
 menu_strs:
         .ifdef  STANDALONE
         .ascii  "            "
@@ -2796,6 +2824,40 @@ arr_spr:
         mov.l   LS_down,r0
         sub     r0,r7
 .Ls_go:
+        .ifndef STANDALONE
+        mov.l   LS_flag,r1          ! HADOUGUN (Rosy Arrange real play only):
+        mov.b   @r1,r0              ! the ship and the options
+        tst     r0,r0
+        bt      .Ls_orig
+        mov.l   LS_real,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Ls_orig
+        sts     pr,r0
+        mov.l   LS_pdraw,r1
+        cmp/eq  r1,r0
+        bt      .Ls_hg
+        mov.l   LS_odraw,r1
+        cmp/eq  r1,r0
+        bf      .Ls_orig
+        mov.l   LS_hadou,r1         ! an option: not drawn with no HADOUGUN left
+        mov.b   @r1,r0
+        tst     r0,r0
+        bf      .Ls_orig
+        rts
+        nop
+.Ls_hg:
+        mov.l   LS_hgdraw,r0
+        jmp     @r0
+        nop
+        .align 2
+LS_pdraw:   .long 0x0C07E7E2        ! return address of the ship's sprite call
+LS_odraw:   .long 0x0C0813CC        ! ... and of the options' sprite call
+LS_hadou:   .long VAR_HADOU
+LS_real:    .long REALPLAY
+LS_hgdraw:  .long hg_pdraw
+.Ls_orig:
+        .endif
         mov.l   r8,@-r15            ! --- replayed original code ---
         mov.l   r9,@-r15
         mov.l   r10,@-r15
@@ -3312,6 +3374,16 @@ LK_end:     .long 0x00010000
 ! on each axis toward the ship, which then collects it as usual. Uses r0-r7.
 !------------------------------------------------------------------
 magnet:
+        .ifndef STANDALONE
+        sts.l   pr,@-r15
+        mov.l   LGM_hud,r0
+        jsr     @r0
+        nop
+        mov.l   LGM_hg,r0
+        jsr     @r0
+        nop
+        lds.l   @r15+,pr
+        .endif
         mov.l   LGM_fsnd,r1         ! the louder-pickup window counts down
         mov.b   @r1,r0
         tst     r0,r0
@@ -3388,6 +3460,10 @@ LGM_p1:      .long P1
 LGM_items:   .long 0x0C5B68EC
 LGM_step:    .long MAGNET_STEP
 LGM_fsnd:    .long VAR_FLWSND
+        .ifndef STANDALONE
+LGM_hud:     .long hadou_hud
+LGM_hg:      .long hg_logic
+        .endif
 
 !------------------------------------------------------------------
 ! snd_hook (Pink Sweets Forever): the sound driver starts a channel through
@@ -4205,6 +4281,753 @@ LH2_dirty:  .long DIRTY + 36
 ! through the literal at 0x0C06E77C (row 2, column 9)
 nfs_str:    .asciz  "NOT FOR SALE"
         .align 2
+        .endif
+
+        .ifndef STANDALONE
+!------------------------------------------------------------------
+! hadou_hud (combined, Rosy's Arrange play, every frame): HADOUGUN stock. A
+! lost life adds one, up to HADOU_MAX. Shown as 1..4 icons in the lower left
+! of the text layer (rows 7..5, cols 0..8: chars HADOU_CHR + (n-1) x 32 +
+! row x 9 + col). Cells are only rewritten (rows marked dirty) on a change.
+!------------------------------------------------------------------
+hadou_hud:
+        mov.l   r8,@-r15
+        mov.l   LHH_p1,r1
+        mov.w   WHH_27b,r0
+        mov.b   @(r0,r1),r2
+        extu.b  r2,r2
+        add     #1,r2               ! lives + 1
+        mov.l   LHH_var,r3
+        mov.b   @(1,r3),r0          ! VAR_HLIVES
+        extu.b  r0,r4
+        mov     r2,r0
+        mov.b   r0,@(1,r3)
+        tst     r4,r4
+        bt      .Lhh_show           ! first frame
+        cmp/hs  r4,r2
+        bt      .Lhh_show           ! not fewer lives
+        mov.b   @r3,r0              ! a life was lost: one more HADOUGUN
+        extu.b  r0,r0
+        cmp/eq  #HADOU_MAX,r0
+        bt      .Lhh_show
+        add     #1,r0
+        mov.b   r0,@r3
+.Lhh_show:
+        mov.b   @r3,r0
+        extu.b  r0,r5               ! r5 = count
+        mov.l   LHH_cell,r1         ! row 7, col 0
+        mov.l   LHH_dirty,r6        ! DIRTY + 7
+        mov.w   WHH_chr,r7
+        mov     r5,r0
+        add     #-1,r0
+        shll2   r0
+        shll2   r0
+        shll    r0                  ! (count - 1) x 32
+        add     r0,r7               ! r7 = first char of this strip
+        mov     #3,r3               ! rows
+.Lhh_row:
+        mov     #9,r2               ! cols
+        mov     #0,r4               ! row changed?
+.Lhh_col:
+        mov     #0,r0
+        tst     r5,r5
+        bt      .Lhh_c              ! no stock: empty cells
+        mov.l   LHH_tint,r0
+        or      r7,r0
+.Lhh_c:
+        mov.l   @r1,r8
+        cmp/eq  r0,r8
+        bt      .Lhh_same
+        mov.l   r0,@r1
+        mov     #1,r4
+.Lhh_same:
+        add     #1,r7
+        dt      r2
+        bf/s    .Lhh_col
+        add     #4,r1
+        tst     r4,r4
+        bt      .Lhh_nd
+        mov     #1,r0
+        mov.b   r0,@r6
+.Lhh_nd:
+        add     #-1,r6
+        mov.w   WHH_back,r0         ! next row down: -0x80 - 9 cells
+        add     r0,r1
+        dt      r3
+        bf      .Lhh_row
+        rts
+        mov.l   @r15+,r8
+        .align 1
+WHH_27b:    .word 0x27B
+WHH_chr:    .word HADOU_CHR
+WHH_back:   .word -0x80 - 9 * 4
+        .align 2
+LHH_p1:     .long P1
+LHH_var:    .long VAR_HADOU
+LHH_cell:   .long TEXT + 7 * 0x80 + 0 * 4
+LHH_dirty:  .long DIRTY + 7
+LHH_tint:   .long 0x80808000
+        .endif
+
+        .ifndef STANDALONE
+!------------------------------------------------------------------
+! HADOUGUN (combined build, Rosy's Arrange real play), with the HADO-GUN
+! graphics from the player's Ibara (build.py HG_REGIONS, uploaded with the
+! bar tiles into free VRAM: page 0x0B00,0x0E00 = trail segments + shot head,
+! page 0x0C00,0x0E00 = aim line + glow; our banks HG_BANK / HG_BANK + 1).
+!  Hold B with stock: the options swing from the sides to the front over
+!  HG_CHARGE frames while the aim lines grow from them. Let go after that:
+!  the shot flies up from between the options at 4 px a frame, dropping a
+!  trail segment every 12 px; the trail column damages enemies and cancels
+!  bullets. The shot sticks to the first enemy it touches and stays on it
+!  (damaging it) until it dies or HG_STICK frames pass. One stock used.
+!  Let go earlier: the options go back (no new charge until they are back).
+! Options: 0x0C453630 (2 x 60 bytes), +48 angle (512 = turn, 0 = up).
+!------------------------------------------------------------------
+        .set    HG_SIDE,    16              ! option angle at the front
+        .set    HG_TOP,     352             ! the shot leaves the screen above this (up axis, px)
+        .set    HG_LIFE,    180             ! frames a trail segment stays
+        .set    HG_NSEG,    32              ! most trail segments
+        .set    HG_STICK,   150             ! most frames stuck to an enemy
+        .set    HG_DMG,     2               ! trail damage per frame
+        .set    HG_HDMG,    4               ! stuck head damage per frame
+        .set    HG_HALFW,   20              ! half width of the trail for hits (px)
+        .set    HG_HIT,     16              ! head hit distance (px)
+        .set    HG_BANK,    0xFF0           ! bank ids for our two VRAM pages
+
+! hg_logic (from magnet, every Rosy Arrange real-play frame)
+hg_logic:
+        sts.l   pr,@-r15
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov.l   r11,@-r15
+        mov.l   LG2_hgs,r8          ! r8 -> VAR_HGS
+        mov.l   LG2_p1,r1
+        mov.w   @r1,r0
+        mov.l   WG2_alive,r2
+        cmp/eq  r2,r0
+        bt      .Lhq_alive
+        mov.b   @r8,r0              ! not alive: drop the charge, options back
+        tst     r0,r0
+        bt      .Lhq_beam
+        mov     #0,r0
+        mov.b   r0,@r8
+        bsr     hg_setang
+        mov.b   r0,@(1,r8)
+        bra     .Lhq_beam
+        nop
+.Lhq_alive:
+        mov.l   LG2_prev,r1
+        mov.b   @r1,r4
+        mov     #0x20,r0
+        and     r0,r4               ! r4 = B held
+        mov.b   @r8,r0
+        extu.b  r0,r0
+        cmp/eq  #1,r0
+        bt      .Lhq_charge
+        cmp/eq  #2,r0
+        bt      .Lhq_ready
+        cmp/eq  #3,r0
+        bt      .Lhq_back
+        mov.l   LG2_opt,r1          ! idle: remember the options' angles
+        mov     r8,r2
+        add     #2,r2               ! VAR_HGO
+        mov     #48,r0
+        mov.w   @(r0,r1),r3
+        mov.w   r3,@r2
+        add     #60,r1
+        mov.w   @(r0,r1),r0
+        mov.w   r0,@(2,r2)
+        tst     r4,r4
+        bt      .Lhq_beam
+        mov.l   LG2_stock,r1        ! B held with stock: charge
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Lhq_beam
+        mov     #1,r0
+        mov.b   r0,@r8
+        mov     #0,r0
+        bra     .Lhq_ang
+        mov.b   r0,@(1,r8)
+.Lhq_charge:
+        tst     r4,r4
+        bt      .Lhq_toback         ! let go too early
+        mov.b   @(1,r8),r0
+        extu.b  r0,r0
+        add     #1,r0
+        mov.b   r0,@(1,r8)
+        cmp/eq  #HG_CHARGE,r0
+        bf      .Lhq_ang
+        mov     #2,r0
+        bra     .Lhq_ang
+        mov.b   r0,@r8
+.Lhq_ready:
+        tst     r4,r4
+        bf      .Lhq_ang
+        mov.l   LG2_stock,r1        ! fire: one HADOUGUN used
+        mov.b   @r1,r0
+        add     #-1,r0
+        mov.b   r0,@r1
+        mov.l   LG2_p1,r1
+        mov.l   @(24,r1),r2         ! ship, up axis
+        mov.l   LG2_ahead,r3
+        add     r3,r2
+        mov.l   @(28,r1),r3         ! ship, across
+        mov.l   LG2_bx,r1
+        mov.l   r2,@r1              ! VAR_BX
+        mov.l   r3,@(4,r1)          ! VAR_BY
+        mov.l   r2,@(8,r1)          ! VAR_HX
+        mov.l   r3,@(12,r1)         ! VAR_HY
+        mov     #0,r0
+        mov.l   r0,@(16,r1)         ! VAR_HOBJ: flying
+        mov.l   r0,@(20,r1)         ! VAR_HSTK, VAR_HNSEG
+        mov     #1,r0
+        mov.w   r0,@(6,r8)          ! VAR_BT = 1
+.Lhq_toback:
+        mov     #3,r0
+        bra     .Lhq_ang
+        mov.b   r0,@r8
+.Lhq_back:
+        mov.b   @(1,r8),r0
+        extu.b  r0,r0
+        add     #-2,r0
+        cmp/pl  r0
+        bt      .Lhq_bk
+        mov     #0,r0
+        mov.b   r0,@r8              ! back at the sides: idle
+.Lhq_bk:
+        mov.b   r0,@(1,r8)
+.Lhq_ang:
+        bsr     hg_setang
+        nop
+.Lhq_beam:
+        mov.w   @(6,r8),r0          ! VAR_BT
+        extu.w  r0,r9
+        tst     r9,r9
+        bf      .Lhq_bt0
+        bra     .Lhq_out
+        nop
+.Lhq_bt0:
+        add     #1,r9
+        mov.l   WG2_end,r0
+        cmp/hi  r0,r9
+        bf      .Lhq_bt
+        mov     #0,r9
+.Lhq_bt:
+        mov     r9,r0
+        mov.w   r0,@(6,r8)
+        tst     r9,r9
+        bf      .Lhq_live
+        bra     .Lhq_out
+        nop
+.Lhq_live:
+        mov.l   LG2_bx,r10          ! r10 -> VAR_BX..
+        ! --- the head: flying, stuck or gone ---
+        mov.l   @(16,r10),r1        ! VAR_HOBJ
+        tst     r1,r1
+        bt      .Lhq_fly
+        mov.w   @r1,r0              ! stuck: follow it while it lives
+        tst     r0,r0
+        bt      .Lhq_unstick
+        mov.l   WG2_44,r0
+        mov.w   @(r0,r1),r0
+        tst     r0,r0
+        bt      .Lhq_unstick
+        mov.w   @(20,r10),r0        ! VAR_HSTK
+        add     #1,r0
+        mov.w   r0,@(20,r10)
+        mov.l   WG2_stick,r2
+        cmp/hs  r2,r0
+        bt      .Lhq_unstick
+        mov.l   @(44,r1),r0
+        mov.l   r0,@(8,r10)         ! head on the enemy
+        mov.l   @(48,r1),r0
+        mov.l   r0,@(12,r10)
+        mov     r1,r0               ! damage it: slot = (obj - table) / 0xCC
+        mov.l   LG2_enemy,r2
+        sub     r2,r0
+        mov     #0,r5
+        mov.l   WG2_cc,r2
+.Lhq_slot:
+        cmp/hs  r2,r0
+        bf      .Lhq_sl2
+        sub     r2,r0
+        bra     .Lhq_slot
+        add     #1,r5
+.Lhq_sl2:
+        mov     #0,r4
+        mov.l   LG2_crkflag,r6
+        mov.l   LG2_dmgfn,r0
+        jsr     @r0
+        mov     #HG_HDMG,r7
+        bra     .Lhq_trail
+        nop
+.Lhq_unstick:
+        mov     #-1,r0              ! done: the head is gone (HOBJ = -1)
+        bra     .Lhq_trail
+        mov.l   r0,@(16,r10)
+.Lhq_fly:
+        mov.l   @(8,r10),r2         ! up 4 px
+        mov.l   LG2_4,r0
+        add     r0,r2
+        mov.l   r2,@(8,r10)
+        mov.l   LG2_top,r0
+        cmp/gt  r0,r2
+        bt      .Lhq_unstick        ! off the top
+        mov.l   @(12,r10),r3
+        ! touching an enemy?
+        mov.l   LG2_enemy,r11
+        mov     #0,r9
+.Lhq_hit:
+        mov.l   @r11,r0             ! alive with HP left
+        tst     r0,r0
+        bt      .Lhq_hnext
+        mov.l   WG2_44,r0
+        mov.w   @(r0,r11),r0
+        tst     r0,r0
+        bt      .Lhq_hnext
+        mov.l   @(44,r11),r0
+        sub     r2,r0
+        cmp/pz  r0
+        bt      .Lhq_h1
+        neg     r0,r0
+.Lhq_h1:
+        mov.l   LG2_hit,r1
+        cmp/hi  r1,r0
+        bt      .Lhq_hnext
+        mov.l   @(48,r11),r0
+        sub     r3,r0
+        cmp/pz  r0
+        bt      .Lhq_h2
+        neg     r0,r0
+.Lhq_h2:
+        cmp/hi  r1,r0
+        bt      .Lhq_hnext
+        mov.l   r11,@(16,r10)       ! stuck
+        bra     .Lhq_trail
+        nop
+.Lhq_hnext:
+        mov.l   WG2_cc,r0
+        add     r0,r11
+        add     #1,r9
+        mov.l   WG2_192,r0
+        cmp/eq  r0,r9
+        bf      .Lhq_hit
+.Lhq_trail:
+        ! trail segments follow the head up the column (one every 12 px)
+        mov.l   @(8,r10),r0         ! while flying: n = (head - BX) / 12
+        mov.l   @(16,r10),r1
+        tst     r1,r1
+        bf      .Lhq_tdone
+        mov.l   @r10,r1
+        sub     r1,r0
+        shlr16  r0
+        mov.l   WG2_twelfth,r1
+        mulu.w  r1,r0
+        sts     macl,r0
+        shlr16  r0
+        mov     #HG_NSEG,r1
+        cmp/hi  r1,r0
+        bf      .Lhq_tn
+        mov     r1,r0
+.Lhq_tn:
+        mov.w   r0,@(22,r10)        ! VAR_HNSEG
+.Lhq_tdone:
+        mov.w   @(22,r10),r0
+        extu.w  r0,r7
+        tst     r7,r7
+        bt      .Lhq_out
+        ! trail hit range on the up axis: BX - 8 .. BX + 12 n + 8
+        mov.l   @r10,r6
+        mov.l   LG2_8,r0
+        sub     r0,r6
+        mov     r7,r0
+        shll2   r0
+        mov     r0,r1
+        add     r0,r0
+        add     r1,r0               ! 12 n
+        shll16  r0
+        mov.l   @r10,r7
+        add     r0,r7
+        mov.l   LG2_8,r0
+        add     r0,r7
+        mov.l   @(4,r10),r11        ! BY
+        mov.l   LG2_enemy,r10
+        mov     #0,r9
+.Lhq_en:
+        mov.l   @r10,r0             ! alive with HP left
+        tst     r0,r0
+        bt      .Lhq_ennext
+        mov.l   WG2_44,r0
+        mov.w   @(r0,r10),r0
+        tst     r0,r0
+        bt      .Lhq_ennext
+        mov.l   @(44,r10),r0
+        cmp/ge  r6,r0
+        bf      .Lhq_ennext
+        cmp/gt  r7,r0
+        bt      .Lhq_ennext
+        mov.l   @(48,r10),r0
+        sub     r11,r0
+        cmp/pz  r0
+        bt      .Lhq_enabs
+        neg     r0,r0
+.Lhq_enabs:
+        mov.l   LG2_halfw,r1
+        cmp/hi  r1,r0
+        bt      .Lhq_ennext
+        mov.l   r6,@-r15
+        mov.l   r7,@-r15
+        mov     #0,r4
+        mov     r9,r5
+        mov.l   LG2_crkflag,r6
+        mov.l   LG2_dmgfn,r0
+        jsr     @r0
+        mov     #HG_DMG,r7
+        mov.l   @r15+,r7
+        mov.l   @r15+,r6
+.Lhq_ennext:
+        mov.l   WG2_cc,r0
+        add     r0,r10
+        add     #1,r9
+        mov.l   WG2_192,r0
+        cmp/eq  r0,r9
+        bf      .Lhq_en
+        mov.l   LG2_bul,r10         ! bullets in the column
+        mov.l   WG2_1024,r9
+.Lhq_bl:
+        mov.l   @r10,r0
+        tst     r0,r0
+        bt      .Lhq_blnext
+        mov.l   @(48,r10),r0
+        cmp/ge  r6,r0
+        bf      .Lhq_blnext
+        cmp/gt  r7,r0
+        bt      .Lhq_blnext
+        mov.l   @(52,r10),r0
+        sub     r11,r0
+        cmp/pz  r0
+        bt      .Lhq_blabs
+        neg     r0,r0
+.Lhq_blabs:
+        mov.l   LG2_halfw,r1
+        cmp/hi  r1,r0
+        bt      .Lhq_blnext
+        mov.l   r6,@-r15
+        mov.l   r7,@-r15
+        mov.l   LG2_cancel,r0
+        jsr     @r0
+        mov     r10,r4
+        mov.l   @r15+,r7
+        mov.l   @r15+,r6
+.Lhq_blnext:
+        mov.l   WG2_90,r0
+        dt      r9
+        bf/s    .Lhq_bl
+        add     r0,r10
+.Lhq_out:
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+
+! hg_setang: option angles from VAR_HGT (0 = own angle, HG_CHARGE = front).
+! r8 -> VAR_HGS. Uses r0..r3, r5, r6.
+hg_setang:
+        mov.b   @(1,r8),r0
+        extu.b  r0,r5               ! t
+        mov.l   WG2_inv,r0          ! 65536 / 120
+        mulu.w  r0,r5
+        sts     macl,r5             ! t * 546
+        mov.l   LG2_opt,r1
+        mov     r8,r2
+        add     #2,r2               ! VAR_HGO
+        mov     #2,r6
+.Lsa_one:
+        mov.w   @r2+,r3             ! own angle
+        mov     #HG_SIDE,r0
+        cmp/pz  r3
+        bt      .Lsa_pos
+        neg     r0,r0
+.Lsa_pos:
+        sub     r3,r0               ! target - own
+        mul.l   r0,r5
+        sts     macl,r0
+        shlr16  r0                  ! >> 16, sign kept below
+        exts.w  r0,r0
+        add     r3,r0
+        mov.l   r0,@-r15
+        mov     #48,r0
+        mov.l   @r15+,r3
+        mov.w   r3,@(r0,r1)
+        dt      r6
+        bf/s    .Lsa_one
+        add     #60,r1
+        rts
+        nop
+        .align 2
+WG2_alive:  .long 0xFFFFCE00
+WG2_end:    .long HG_NSEG * 3 + HG_LIFE + HG_STICK
+WG2_4000:   .long 0x4000
+WG2_44:     .long 0x44
+WG2_cc:     .long 0xCC
+WG2_192:    .long 192
+WG2_1024:   .long 1024
+WG2_90:     .long 0x90
+WG2_inv:    .long 546
+WG2_stick:  .long HG_STICK
+WG2_twelfth:.long 0x1556
+        .align 2
+LG2_p1:     .long P1
+LG2_hgs:    .long VAR_HGS
+LG2_prev:   .long VAR_PREV
+LG2_opt:    .long 0x0C453630
+LG2_stock:  .long VAR_HADOU
+LG2_ahead:  .long 32 << 16
+LG2_bx:     .long VAR_BX
+LG2_4:      .long 4 << 16
+LG2_8:      .long 8 << 16
+LG2_top:    .long HG_TOP << 16
+LG2_hit:    .long HG_HIT << 16
+LG2_enemy:  .long 0x0C416968
+LG2_halfw:  .long HG_HALFW << 16
+LG2_crkflag:.long 0xCC100000
+LG2_dmgfn:  .long 0x0C084F10
+LG2_bul:    .long 0x0C4541B4
+LG2_cancel: .long 0x0C088940
+
+! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
+! and 3 stack arguments), then the aim lines, trail and shot head on top.
+hg_pdraw:
+        sts.l   pr,@-r15
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov.l   r11,@-r15
+        add     #-12,r15
+        mov.l   @(32,r15),r0        ! the caller's stack arguments
+        mov.l   r0,@r15
+        mov.l   @(36,r15),r0
+        mov.l   r0,@(4,r15)
+        mov.l   @(40,r15),r0
+        mov.l   r0,@(8,r15)
+        bsr     hg_spr              ! the ship
+        nop
+        mov.l   LP_btab,r1          ! our VRAM pages in the bank table
+        mov.l   LP_page0,r0
+        mov.l   r0,@r1
+        mov.l   LP_page1,r0
+        mov.l   r0,@(4,r1)
+        mov.l   LP_hgs,r8
+        mov.b   @r8,r0
+        extu.b  r0,r0
+        cmp/eq  #1,r0
+        bt      .Lpd_lines
+        cmp/eq  #2,r0
+        bf      .Lpd_beam
+        mov     #128,r9             ! ready: full length, dots moving
+        extu.b  r9,r9
+        bra     .Lpd_l2
+        nop
+.Lpd_lines:
+        mov.b   @(1,r8),r0          ! charging: grow with the charge (t + 8)
+        extu.b  r0,r9
+        add     #8,r9
+.Lpd_l2:
+        mov.l   LP_frame,r1         ! frame counter for the dot animation
+        mov.l   @r1,r0
+        add     #1,r0
+        mov.l   r0,@r1
+        shlr2   r0
+        shlr    r0
+        mov     #0,r0
+        mov     r0,r11              ! line frame (one frame kept)
+        mov.l   LP_opt,r10
+        mov     #2,r8               ! two options (r8 is reloaded below)
+.Lpd_lone:
+        ! aim line: our def with length r9 (in the r15 scratch def)
+        mov.l   LP_ldef,r4
+        mov     r11,r0
+        mov     #24,r1
+        mulu.w  r1,r0
+        sts     macl,r0
+        mov.b   r0,@(3,r4)          ! src y = frame x 24
+        mov     r9,r0
+        add     #-1,r0
+        mov.b   r0,@(6,r4)          ! x size - 1 = length - 1
+        mov.l   LP_flip,r0
+        or      r0,r4
+        mov.w   WP_8000,r6
+        extu.w  r6,r6
+        mov.l   @(20,r10),r7
+        bsr     hg_one
+        mov.l   @(24,r10),r3
+        mov.l   LP_gdef,r4          ! glow, same length
+        mov     r11,r0
+        mov     #24,r1
+        mulu.w  r1,r0
+        sts     macl,r0
+        mov.b   r0,@(3,r4)
+        mov     r9,r0
+        add     #-1,r0
+        mov.b   r0,@(6,r4)
+        mov.l   LP_flip,r0
+        or      r0,r4
+        mov.l   LP_blend,r6
+        mov.l   @(20,r10),r7
+        bsr     hg_one
+        mov.l   @(24,r10),r3
+        dt      r8
+        bf/s    .Lpd_lone
+        add     #60,r10
+.Lpd_beam:
+        mov.l   LP_hgs,r8
+        mov.w   @(6,r8),r0          ! VAR_BT
+        extu.w  r0,r9
+        tst     r9,r9
+        bt      .Lpd_out
+        mov.l   LP_bx,r10           ! r10 -> VAR_BX..
+        mov.l   LP_nseg,r1
+        mov.w   @r1,r0
+        extu.w  r0,r11              ! segments dropped
+        ! trail: segment i at BX + 12 i, dropped at BT ~ 3 i
+        mov     #0,r8
+.Lpd_seg:
+        cmp/hs  r11,r8
+        bt      .Lpd_head
+        mov     r8,r0
+        add     r8,r0
+        add     r8,r0               ! 3 i
+        mov     r9,r2
+        sub     r0,r2               ! age
+        cmp/pz  r2
+        bf      .Lpd_next
+        mov.w   WP_life,r0
+        cmp/hs  r0,r2
+        bt      .Lpd_next
+        mov     r8,r7               ! 12 i
+        shll2   r7
+        mov     r7,r0
+        add     r7,r7
+        add     r0,r7
+        shll16  r7
+        mov.l   @r10,r0
+        add     r0,r7
+        mov.w   WP_third,r0         ! frame = (age / 3) & 15
+        mulu.w  r0,r2
+        sts     macl,r2
+        shlr16  r2
+        mov     r2,r0
+        and     #15,r0
+        mov     r0,r1               ! def = hg_sdefs + frame x 12
+        shll2   r1
+        mov     r1,r0
+        add     r1,r1
+        add     r0,r1
+        mov.l   LP_sdefs,r0
+        add     r0,r1
+        mov     r1,r4
+        mov.w   WP_ff,r6            ! alpha 0xFF - age / 3
+        sub     r2,r6
+        mov     r6,r0
+        shll8   r0
+        or      r0,r6
+        mov.l   LP_seg,r0
+        or      r0,r6
+        bsr     hg_one
+        mov.l   @(4,r10),r3
+.Lpd_next:
+        bra     .Lpd_seg
+        add     #1,r8
+.Lpd_head:
+        mov.l   @(16,r10),r0        ! VAR_HOBJ = -1: gone
+        cmp/eq  #-1,r0
+        bt      .Lpd_out
+        mov     r9,r0               ! frame BT & 7
+        and     #7,r0
+        mov     r0,r1
+        shll2   r1
+        mov     r1,r0
+        add     r1,r1
+        add     r0,r1               ! x 12
+        mov.l   LP_hdefs,r0
+        add     r0,r1
+        mov     r1,r4
+        mov.w   WP_8000,r6
+        extu.w  r6,r6
+        mov.l   @(8,r10),r7
+        bsr     hg_one
+        mov.l   @(12,r10),r3
+.Lpd_out:
+        add     #12,r15
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+hg_one:                             ! r4 def, r6 flags, r7 up, r3 across
+        mov.l   r3,@r15
+        mov.l   LP_tint,r0
+        mov.l   r0,@(4,r15)
+        mov     #0,r0
+        mov.l   r0,@(8,r15)
+        mov.l   LP_banks,r5
+hg_spr:                             ! enter the sprite routine as a normal call
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov.l   r11,@-r15
+        mov.l   r12,@-r15
+        mov.l   r13,@-r15
+        mov.l   LP_ret,r0
+        jmp     @r0
+        nop
+        .align 1
+WP_third:   .word 0x5556
+WP_8000:    .word 0x8000
+WP_life:    .word HG_LIFE
+WP_ff:      .word 0xFF
+        .align 2
+LP_btab:    .long 0x0C49CD60 + HG_BANK * 4
+LP_page0:   .long 0x0B000E00
+LP_page1:   .long 0x0C000E00
+LP_hgs:     .long VAR_HGS
+LP_frame:   .long VAR_HFRM
+LP_opt:     .long 0x0C453630
+LP_flip:    .long HG_FLIP
+LP_blend:   .long 0x02078000
+LP_seg:     .long 0x02040000
+LP_bx:      .long VAR_BX
+LP_nseg:    .long VAR_HNSEG
+LP_tint:    .long 0x00808080
+LP_ret:     .long 0x0C07C21C
+LP_ldef:    .long hg_ldef
+LP_gdef:    .long hg_gdef
+LP_sdefs:   .long hg_sdefs
+LP_hdefs:   .long hg_hdefs
+LP_banks:   .long hg_banks
+hg_banks:   .word HG_BANK, HG_BANK + 1
+        .align 2
+! defs (5 words + end): w0 = flags | bank list index + 1, w1 = src x << 8 | y
+! in the page, w2 = offsets, w3 = (x size - 1) << 8 | (y size - 1), w4 = 0
+hg_sdefs:                           ! trail segment frames 0..15 (page 0, x 0x00..0x1F)
+        .irp    f, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+        .word   0x9001, ((0x10 - (\f / 8) * 0x10) << 8) | ((\f % 8) * 0x20), 0xF8F0, 0x0F1F, 0, 0
+        .endr
+hg_hdefs:                           ! shot head frames 0..7 (page 0, x 0x40..0x67)
+        .irp    f, 0,1,2,3,4,5,6,7
+        .word   0x9801, (0x40 << 8) | (\f * 0x18), 0xE8F4, 0x2717, 0, 0
+        .endr
+hg_ldef:                            ! aim line (page 1, x 0x00; y and length set when drawn)
+        .word   0x8002, 0x0000, 0x00F4, 0x7F17, 0, 0
+hg_gdef:                            ! glow (page 1, x 0x80)
+        .word   0x8002, 0x8000, 0x00F4, 0x7F17, 0, 0
         .endif
 
         .include "bar.inc"
