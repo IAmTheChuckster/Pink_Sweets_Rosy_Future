@@ -1,8 +1,8 @@
 # Pink Sweets Rosy Future
 
 ## To Do
-1. update warning page
-3. update title page and remove sale by am
+1. ~update warning page~
+3. ~update title page and remove sale by ami~
 5. **All:** update HUD and make the boss health as a bar and explore rank and timer placements
 6. **All** draw a transparent box around the boss health
 8. **Arrange:** tweak rank, 1up adds 5, dying subtracks 3
