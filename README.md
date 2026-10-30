@@ -1,4 +1,4 @@
-# Pink Sweets Forever
+# Pink Sweets Rosy Future
 
 ## Bugs
 1. investigate a possible bug with kasumi where it stopped in the Ruins but the song kept playing for a bit then the song stopped
