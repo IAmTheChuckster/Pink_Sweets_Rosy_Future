@@ -166,6 +166,60 @@ STANDALONE_PATCHES = [
 ]
 
 
+
+# ---- boss health bar tiles (combined build, ROSY'S ARRANGE HUD) --------------
+# 3 colours x (left end 0..7 px, middle 0..8 px, right end 0..7 px) filled:
+# char BAR_CHAR + colour * 32 + type * 9 + n. 8 x 8 cells: white outline on
+# rows 1 and 7 (and the outer column of the ends), fill on rows 2..6, the rest
+# transparent. Uploaded once into the unused text-font chars 0x400..
+# (char k at VRAM x = 0x8F8 - (k >> 5) * 8, y = (k & 31) * 8, stored rotated
+# 90 deg clockwise).
+BAR_CHAR = 0x400
+BAR_COLOURS = [(40, 220, 60), (240, 220, 40), (230, 30, 30)]   # green, yellow, red
+
+
+def bar_inc():
+    from PIL import Image
+    W = (255, 255, 255)
+    vram = {}
+    for c, col in enumerate(BAR_COLOURS):
+        for t, (cap, x0) in enumerate(((7, 1), (8, 0), (7, 0))):
+            for n in range(cap + 1):
+                tile = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+                for x in range(8):
+                    tile.putpixel((x, 1), W + (255,))
+                    tile.putpixel((x, 7), W + (255,))
+                ox = 0 if t == 0 else (7 if t == 2 else None)
+                if ox is not None:
+                    for y in range(1, 8):
+                        tile.putpixel((ox, y), W + (255,))
+                for x in range(x0, x0 + n):
+                    for y in range(2, 7):
+                        tile.putpixel((x, y), col + (255,))
+                k = BAR_CHAR + c * 32 + t * 9 + n
+                tile = tile.rotate(-90)
+                vx, vy = 0x8F8 - (k >> 5) * 8, (k & 31) * 8
+                for yy in range(8):
+                    for xx in range(8):
+                        r, g, b_, al = tile.getpixel((xx, yy))
+                        w = ((r >> 3) << 10) | ((g >> 3) << 5) | (b_ >> 3)
+                        vram[(vx + xx, vy + yy)] = (w | 0x8000) if al else 0
+    x0 = min(x for x, y in vram); x1 = max(x for x, y in vram)
+    y0 = min(y for x, y in vram); y1 = max(y for x, y in vram)
+    words = [0xC000, 0x0000, 0x2000, 0x0000, 0x9999, 0x9999, x0, y0, x1 - x0, y1 - y0]
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            words.append(vram.get((x, y), 0))
+    words += [0x0000, 0x0000]
+    if len(words) % 2:
+        words.append(0)
+    lines = ["        .align 2", "bar_list:"]
+    for i in range(0, len(words), 8):
+        lines.append("        .word " + ",".join(f"0x{w:04X}" for w in words[i:i + 8]))
+    lines += ["        .align 2", ""]
+    return "\n".join(lines)
+
+
 def _warning(block):
     # the boot warning: 14 lines of 30 characters (each NUL-terminated) per
     # region block; the last line is the version/date
@@ -254,6 +308,28 @@ COMBO_PATCHES = [p for p in PATCHES if p[0] not in (0x0C06E64A, 0x0C06E658, 0x0C
     (0x0C091118, bytes.fromhex("e30b")),
     (0x0C09112C, bytes.fromhex("7a74")),
 ]
+
+def _warning_rf(block):
+    # Pink Sweets Rosy Future boot warning (14 lines of 30 characters per
+    # region block, each NUL-terminated; the last line is the version/date)
+    import textwrap
+    t = ("This project is unofficial and is not affiliated with, endorsed by, "
+         "or authorized by CAVE. All rights to the original game and its "
+         "associated intellectual property remain with their respective "
+         "rights holders.")
+    lines = [("  " + l).ljust(30) for l in textwrap.wrap(t, 26)] + [" " * 30, "HAVE FUN!!!".center(30)]
+    lines += [" " * 30] * (13 - len(lines)) + ["2026/10/30 ROSY FUTURE".center(30)]
+    assert len(lines) == 14 and all(len(x) == 30 for x in lines)
+    return (block, b"".join(x.encode() + b"\0" for x in lines))
+
+
+COMBO_PATCHES += [
+    _warning_rf(0x0C1066F4),            # Japan warning
+    _warning_rf(0x0C1068A6),            # overseas warning
+    # title footer: "SALE BY AMI" -> "NOT FOR SALE" (the print's string literal)
+    (0x0C06E77C, "nfs_str"),
+]
+
 # Combined build: changes that must only be in the program during a Rosy Arrange
 # credit game; mode_apply swaps them in and out: (address, original, Rosy Arrange)
 TOGGLES = [
@@ -296,6 +372,8 @@ def assemble(standalone):
     tmp = tempfile.mkdtemp()
     with open(os.path.join(tmp, "patch_table.inc"), "w") as f:
         f.write(patch_table_inc(STANDALONE_PATCHES if standalone else COMBO_PATCHES))
+    with open(os.path.join(tmp, "bar.inc"), "w") as f:
+        f.write(bar_inc() if not standalone else "")
     with open(os.path.join(tmp, "toggle_table.inc"), "w") as f:
         f.write(toggle_table_inc(standalone))
     with open(os.path.join(tmp, "labels.inc"), "w") as f:

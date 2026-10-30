@@ -71,6 +71,10 @@
         .set    MAGNET_STEP,0x000C0000      ! up to 12 px a frame on each axis (16.16)
         .set    VAR_FLWSND, 0x0C7E01CA      ! frames left to play the pickup sound louder (a cracker flower was collected)
         .set    FLW_PHRASE, 0x24            ! sound phrase of a score item pickup
+        .set    VAR_BUP,    0x0C7E01CD      ! (combined) 1 = upload the boss health bar tiles at the next blitter kick
+        .set    VAR_HPMAX,  0x0C7E01CE      ! (combined, word) boss health at the start of the fight/phase
+        .set    VAR_HPOBJ,  0x0C7E01D0      ! (combined, u32) object VAR_HPMAX belongs to
+        .set    BAR_CHR,    0x400           ! first text char of the bar tiles (build.py bar_inc)
         .set    VAR_MODEAPP,0x0C7E01C8      ! (combined build) 1 = the Rosy Arrange code changes are in the program
         .set    RF_MENU,    0xA0100498      ! Rosy Future's 5-entry title menu (sets VAR_SEL / VAR_FLAG / MODE_SEL)
         .set    VAR_CRKHOLD,0x0C7E01BE      ! frames left of "the rose cracker is busy": an empty
@@ -265,6 +269,14 @@ L_dext: .long   0x0C3B0A7C
         mov.l   r0,@(56,r3)         ! VAR_CSHOWN (0x14C)
         mov.l   L_pend,r1
         mov.b   r0,@r1              ! VAR_PEND: no lipsticks left from the last game
+        .ifndef STANDALONE
+        mov.l   L_bup,r1            ! boss health bar tiles uploaded again
+        mov     #1,r0
+        mov.b   r0,@r1
+        mov     #0,r0
+        mov.l   L_hpobj,r1
+        mov.l   r0,@r1
+        .endif
         mov.l   L_kills,r1
         mov.l   r0,@r1              ! VAR_KILLS
         mov.l   r0,@(48,r1)         ! VAR_TICKS (0x1B8)
@@ -351,6 +363,8 @@ L_kills:    .long VAR_KILLS
 L_dirty19:  .long DIRTY + 19
 L_mapply:   .long mode_apply
 L_pend:     .long VAR_PEND
+L_bup:      .long VAR_BUP
+L_hpobj:    .long VAR_HPOBJ
 menu_strs:
         .ifdef  STANDALONE
         .ascii  "            "
@@ -764,11 +778,9 @@ arr_frame:
         mov.l   L3_bscan,r0         ! boss or midboss alive? (the cracker leaves them alone)
         jsr     @r0
         nop
-        .ifdef  STANDALONE
-        mov.l   L3_bhud,r0          ! its timer and HP (Rosy Future's HUD isn't here)
-        jsr     @r0
+        mov.l   L3_bhud,r0          ! its timer and HP (standalone: Rosy Future's HUD isn't
+        jsr     @r0                 ! here; combined: timer under the stage name, health bar)
         nop
-        .endif
         mov.l   L3_p1,r1
         mov.w   @r1,r0
         tst     r0,r0
@@ -864,9 +876,7 @@ L3_cfrm:    .long VAR_CFRM
 L3_pops:    .long arr_pops
 L3_bscan:   .long boss_scan
 L3_chtxt:   .long chain_txt
-        .ifdef  STANDALONE
 L3_bhud:    .long boss_hud
-        .endif
 L3_xrank:   .long ext_rank
 L3_scap:    .long score_cap
 L3_meter:   .long meter_tick
@@ -2565,6 +2575,23 @@ labels_blit:
         bsr     blt_run
         nop
 .Lr_out2:
+        .ifndef STANDALONE
+        mov.l   LB_bup,r1           ! boss health bar tiles into the text font
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Lr_out3
+        bsr     blt_idle
+        nop
+        tst     r0,r0
+        bt      .Lr_out3
+        mov.l   LB_bup,r1
+        mov     #0,r0
+        mov.b   r0,@r1
+        mov.l   LB_blist,r0
+        bsr     blt_run
+        nop
+.Lr_out3:
+        .endif
         lds.l   @r15+,pr
         rts
         nop
@@ -2620,6 +2647,10 @@ LB_long:    .long 0x00400000
 LB_lptr:    .long VAR_LPTR
 LB_lbuf:    .long LBLBUF
 LB_pend:    .long VAR_CPEND
+        .ifndef STANDALONE
+LB_bup:     .long VAR_BUP
+LB_blist:   .long bar_list + 0xA0000000     ! uncached alias
+        .endif
 LB_stat:    .long 0xB8000010
 LB_addr:    .long 0xB8000008
 LB_exec:    .long 0xB8000004
@@ -3697,10 +3728,8 @@ LX_ten:     .long 838861            ! 0.05 x 2^24 = RANK +5 per extra life
 !==================================================================
 boss_scan:
         mov     #0,r6
-        .ifdef  STANDALONE
         mov.l   LB_bobj,r0
         mov.l   r6,@r0
-        .endif
         mov.l   LB_objs,r1
         mov.w   WB_count,r2
 .Lb_obj:
@@ -3736,11 +3765,9 @@ boss_scan:
         bra     .Lb_ent
         add     #22,r3
 .Lb_found:
-        .ifdef  STANDALONE
         mov.l   LB_bobj,r0
         mov.l   r1,@r0
         mov.l   r3,@(4,r0)          ! VAR_BENT
-        .endif
         mov     r4,r6
         bra     .Lb_out
         add     #1,r6               ! type + 1
@@ -3788,7 +3815,6 @@ boss_tab:   ! Rosy Future's boss/midboss timer table (type, sub-id mask, ...), 2
 LB_tab:     .long BOSSTAB
         .endif
 LB_boss:    .long VAR_BOSS
-        .ifdef  STANDALONE
 LB_bobj:    .long VAR_BOBJ
 
 !==================================================================
@@ -3847,6 +3873,11 @@ boss_hud:
         mul.l   r0,r6
         sts     macl,r6
         shlr16  r6
+        .ifndef STANDALONE
+        mov.l   LH_draw2,r0
+        jmp     @r0
+        nop
+        .endif
         mov.l   LH_row37,r1         ! row 37, cols 19..24 blank
         mov.l   LH_blank,r0
         mov     #6,r7
@@ -3884,6 +3915,11 @@ boss_hud:
         bra     .Lh_dirty
         nop
 .Lh_blank:
+        .ifndef STANDALONE
+        mov.l   LH_blank2,r0
+        jmp     @r0
+        nop
+        .endif
         mov.l   LH_row37,r1
         mov.l   LH_row36,r2
         mov.l   LH_blank,r0
@@ -3960,7 +3996,201 @@ LH_row36:   .long TEXT + 36*0x80 + 19*4
 LH_blank:   .long 0x80808020
 LH_white:   .long 0x80808000
 LH_dirty:   .long DIRTY + 36
+        .ifndef STANDALONE
+LH_draw2:   .long bhud2_draw
+LH_blank2:  .long bhud2_blank
         .endif
 
+        .ifndef STANDALONE
+!==================================================================
+! bhud2 (combined, Rosy's Arrange; boss_hud jumps here with pr saved on the
+! stack): Rosy Future's timer and HP on the right (rows 37/36, cols 19..29)
+! are blanked; the timer "sss.t" goes under the stage name (row 36, cols
+! 13..17) and the health is a bar under it (row 35, cols 11..19: 9 cells,
+! 70 px of fill between a white outline, see build.py bar_inc). The bar is
+! the health against the highest health seen for this object (start of the
+! fight or of a phase): green above 30, yellow 16..30, red 15 and below.
+! r2 = object, r6 = tenths of a second. Uses r0-r7.
+!==================================================================
+bhud2_draw:
+        bsr     bhud2_clear
+        nop
+        mov.l   LH2_row36,r1        ! timer
+        mov     r6,r4
+        mov.l   LH2_pow3,r0
+        bsr     h_digits
+        mov     #3,r7
+        mov.l   LH2_white,r0
+        add     #0x2E,r0
+        mov.l   r0,@r1              ! '.'
+        add     #4,r1
+        mov.l   LH2_white,r0
+        add     #0x30,r0
+        add     r4,r0               ! tenths
+        mov.l   r0,@r1
+        mov.w   WH2_44,r0           ! health
+        mov.w   @(r0,r2),r4
+        extu.w  r4,r4
+        mov.l   LH2_hpobj,r3
+        mov.l   LH2_hpmax,r1
+        mov.l   @r3,r0              ! VAR_HPOBJ
+        cmp/eq  r2,r0
+        bf      .Lb2_new
+        mov.w   @r1,r0
+        extu.w  r0,r5
+        cmp/hi  r5,r4
+        bf      .Lb2_max
+.Lb2_new:
+        mov.l   r2,@r3
+        mov.w   r4,@r1
+.Lb2_max:
+        mov.w   @r1,r0
+        extu.w  r0,r5               ! r5 = max (>= 1 while the boss is alive)
+        tst     r5,r5
+        bf      .Lb2_m1
+        mov     #1,r5
+.Lb2_m1:
+        mov     #70,r0              ! fill = ceil(health * 70 / max)
+        mul.l   r0,r4
+        sts     macl,r3
+        mov     #0,r6               ! fill
+        mov     #0,r7               ! fill * max
+.Lb2_div:
+        cmp/hs  r3,r7
+        bt      .Lb2_col
+        add     #1,r6
+        bra     .Lb2_div
+        add     r5,r7
+.Lb2_col:
+        mov.w   WH2_chr,r7          ! colour: char base
+        mov     #30,r0
+        cmp/hi  r0,r4
+        bt      .Lb2_cells          ! green
+        add     #32,r7
+        mov     #15,r0
+        cmp/hi  r0,r4
+        bt      .Lb2_cells          ! yellow
+        add     #32,r7              ! red
+.Lb2_cells:
+        mov.l   LH2_row35,r1
+        mov     #0,r3               ! cell
+.Lb2_cell:
+        ! cell 0: left end (7 px, type 0), 1..7: 8 px (type 1), 8: right end (7 px, type 2)
+        mov     r6,r0
+        tst     r3,r3
+        bt      .Lb2_left
+        mov     #8,r4
+        cmp/eq  r4,r3
+        bt      .Lb2_right
+        mov     r3,r4               ! middle: n = fill - 7 - 8 (cell - 1), 0..8
+        add     #-1,r4
+        shll2   r4
+        add     r4,r4
+        add     #7,r4
+        sub     r4,r0
+        mov     #8,r4
+        mov     #9,r5               ! type 1 at +9
+        bra     .Lb2_clamp
+        nop
+.Lb2_left:
+        mov     #7,r4
+        bra     .Lb2_clamp
+        mov     #0,r5
+.Lb2_right:
+        mov     #63,r4
+        sub     r4,r0
+        mov     #7,r4
+        mov     #18,r5              ! type 2 at +18
+.Lb2_clamp:
+        cmp/pz  r0
+        bt      .Lb2_c1
+        mov     #0,r0
+.Lb2_c1:
+        cmp/gt  r4,r0
+        bf      .Lb2_c2
+        mov     r4,r0
+.Lb2_c2:
+        add     r5,r0
+        add     r7,r0
+        mov.l   LH2_white,r4
+        or      r4,r0
+        mov.l   r0,@r1
+        add     #4,r1
+        add     #1,r3
+        mov     r3,r0
+        cmp/eq  #9,r0
+        bf      .Lb2_cell
+        bra     .Lb2_dirty
+        nop
+bhud2_blank:
+        bsr     bhud2_clear
+        nop
+        mov.l   LH2_hpobj,r1
+        mov     #0,r0
+        mov.l   r0,@r1              ! VAR_HPOBJ: the next boss starts a new bar
+.Lb2_dirty:
+        mov.l   LH2_dirty,r1        ! rows 35..37
+        mov     #1,r0
+        mov.b   r0,@r1
+        mov.b   r0,@(1,r1)
+        mov.b   r0,@(2,r1)
+        lds.l   @r15+,pr
+        rts
+        nop
+! bhud2_clear: rows 37/36 cols 19..29, row 36 cols 13..17 and row 35 cols
+! 11..19 blank. Leaves r2, r6. Uses r0, r1, r3, r7.
+bhud2_clear:
+        mov.l   LH2_row37,r1
+        mov.l   LH2_row36r,r3
+        mov.l   LH2_blank,r0
+        mov     #11,r7
+.Lb2_cl1:
+        mov.l   r0,@r1
+        mov.l   r0,@r3
+        add     #4,r1
+        dt      r7
+        bf/s    .Lb2_cl1
+        add     #4,r3
+        mov.l   LH2_row36,r1
+        mov     #5,r7
+.Lb2_cl2:
+        mov.l   r0,@r1
+        dt      r7
+        bf/s    .Lb2_cl2
+        add     #4,r1
+        mov.l   LH2_row35,r1
+        mov     #9,r7
+.Lb2_cl3:
+        mov.l   r0,@r1
+        dt      r7
+        bf/s    .Lb2_cl3
+        add     #4,r1
+        rts
+        nop
+        .align 1
+WH2_chr:    .word BAR_CHR
+WH2_44:     .word 0x44
+        .align 2
+LH2_row36:  .long TEXT + 36*0x80 + 13*4
+LH2_row35:  .long TEXT + 35*0x80 + 11*4
+LH2_hpmax:  .long VAR_HPMAX
+LH2_hpobj:  .long VAR_HPOBJ
+LH2_pow3:   .long hpow3
+LH2_row37:  .long TEXT + 37*0x80 + 19*4
+LH2_row36r: .long TEXT + 36*0x80 + 19*4
+LH2_blank:  .long 0x80808020
+LH2_white:  .long 0x80808000
+LH2_dirty:  .long DIRTY + 35
+        .endif
+
+        .ifndef STANDALONE
+! title footer, second line ("SALE BY AMI" in the game): printed from here
+! through the literal at 0x0C06E77C (row 2, column 9)
+nfs_str:    .asciz  "NOT FOR SALE"
+        .align 2
+        .endif
+
+        .include "bar.inc"
         .include "labels.inc"
 _end:
+
