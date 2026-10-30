@@ -39,8 +39,8 @@
     <nvram index="3" size="135680"/>
 
     <rom index="0" zip="pinkswtsfe.zip" md5="none">
-        <part name="pinkswtsfe_u4" crc="ee0b8723"/>
-        <part name="pinkswtsfe_u4" crc="ee0b8723"/>
+        <part name="pinkswtsfe_u4" crc="01a0d6ae"/>
+        <part name="pinkswtsfe_u4" crc="01a0d6ae"/>
     </rom>
 
     <buttons names="Focus Shot,Option/Rose Cracker,Rapid Shot,Type Change,Start,Coin,Test,Service,Save State" default="A,B,X,Y,Start,R,L,Select"/>

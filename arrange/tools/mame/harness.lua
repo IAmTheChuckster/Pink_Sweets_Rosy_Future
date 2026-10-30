@@ -80,6 +80,10 @@ if mode == "boot" then
       bootbin:write(mem:read_range(P1, P1 + 0x2B7, 8))
       bootbin:flush()
     end
+    for _, w in ipairs(parse_list(os.getenv("PS_BSET"))) do
+      local f, ad, v = w:match("(%d+):(%x+)=(%x+)")
+      if f and tonumber(f) == frame then mem:write_u32(tonumber(ad, 16), tonumber(v, 16)) end
+    end
     if os.getenv("PS_BMEM") and frame % 10 == 0 then
       local t = {}
       for _, r in ipairs(parse_list(os.getenv("PS_BMEM"))) do
@@ -337,6 +341,7 @@ emu.register_frame_done(function()
   binf:write(string.pack("B", held))
   for _, r in ipairs(ranges) do binf:write(mem:read_range(r[1], r[1] + r[2] - 1, 8)) end
   if snaps[t] then manager.machine.video:snapshot(); log("snap %d", t) end
+  if os.getenv("PS_RSAVEEVERY") and t % tonumber(os.getenv("PS_RSAVEEVERY")) == 0 then manager.machine:save(string.format("p%05d", t)); log("psaved %d", t) end
   if os.getenv("PS_RSAVE") and t == tonumber(os.getenv("PS_RSAVE")) then manager.machine:save(os.getenv("PS_RSAVENAME") or "rsave"); log("rsaved %d", t) end
   if os.getenv("PS_BLITAT") then
     local b = tonumber(os.getenv("PS_BLITAT"))

@@ -247,6 +247,12 @@ COMBO_PATCHES = [p for p in PATCHES if p[0] not in (0x0C06E64A, 0x0C06E658, 0x0C
     (0x0C07AF48, "ext_hook"),
     # sound driver channel start -> snd_hook (louder pickup sound for cracker flowers)
     (0x0C05FB24, "snd_hook"),
+    # title: PRESS START one row lower (row 16), a blank row under the menu
+    (0x0C06E84A, bytes.fromhex("e510")),
+    # high-score table: 9 score digits (was 8), 11 px apart (was 12), right edge 4 px further right
+    (0x0C0911B6, bytes.fromhex("e808")),
+    (0x0C091118, bytes.fromhex("e30b")),
+    (0x0C09112C, bytes.fromhex("7a74")),
 ]
 # Combined build: changes that must only be in the program during a Rosy Arrange
 # credit game; mode_apply swaps them in and out: (address, original, Rosy Arrange)
