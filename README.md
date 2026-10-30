@@ -2,9 +2,7 @@
 
 ## To Do
 1. update warning page
-2. update title page and separate the press start from the rest
-3. update title page and remove sale by ami
-4. Update MRA files to include button names
+3. update title page and remove sale by am
 5. **All:** update HUD and make the boss health as a bar and explore rank and timer placements
 6. **All** draw a transparent box around the boss health
 8. **Arrange:** tweak rank, 1up adds 5, dying subtracks 3
