@@ -1,5 +1,5 @@
 <!--
-  ikacore_CV1k MRA - Pink Sweets Rosy Forever (2026/10/29 ROSY Forever).
+  ikacore_CV1k MRA - Pink Sweets Rosy Future (2026/10/30 ROSY Future).
 
   Rom order is deliberate - DDR3 first, index 0 LAST.  Index 0's download
   is what finally releases the CPU, so every image is in place before the
@@ -18,8 +18,8 @@
 -->
 <misterromdescription>
     <about author="ika-musume" source="https://github.com/ika-musume/ikacore_CV1k"/>
-    <name>Pink Sweets Rosy Forever (2026/10/29 ROSY Forever)</name>
-    <setname>pinkswtsfe</setname>
+    <name>Pink Sweets Rosy Future (2026/10/30 ROSY Future)</name>
+    <setname>pinkswtsrf</setname>
     <year>2026</year>
     <manufacturer>Cave (AMI license)</manufacturer>
     <category>Shooter</category>
@@ -39,9 +39,9 @@
     <nvram index="3" size="135680"/>
 
     <rom index="0" zip="pinkswtsfe.zip" md5="none">
-        <part name="pinkswtsfe_u4" crc="01a0d6ae"/>
-        <part name="pinkswtsfe_u4" crc="01a0d6ae"/>
+        <part name="pinkswtsrf_u4" crc="01a0d6ae"/>
+        <part name="pinkswtsrf_u4" crc="01a0d6ae"/>
     </rom>
 
-    <buttons names="Focus Shot,Option/Rose Cracker,Rapid Shot,Type Change,Start,Coin,Test,Service,Save State" default="A,B,X,Y,Start,R,L,Select"/>
+    <buttons names="Slow,Option/Rose Cracker,Rapid Shot,Type Change,Start,Coin,Test,Service,Save State" default="A,B,X,Y,Start,R,L,Select"/>
 </misterromdescription>
