@@ -5026,7 +5026,7 @@ LG2_bcan:   .long 0x00100000
 LG2_tick:   .long tick_crk
 
 ! hg_pdraw (arr_spr, Rosy Arrange real play): the ship's sprite call (r4..r7
-! and 3 stack arguments), then the aim lines, trail and shot head on top.
+! and 3 stack arguments) drawn over the aim lines, trail and shot head.
 hg_pdraw:
         sts.l   pr,@-r15
         mov.l   r8,@-r15
@@ -5040,9 +5040,17 @@ hg_pdraw:
         mov.l   r0,@(4,r15)
         mov.l   @(40,r15),r0
         mov.l   r0,@(8,r15)
-        bsr     hg_spr              ! the ship
+        mov.l   r4,@-r15            ! the HADOUGUN effects first (once a frame)
+        mov.l   r5,@-r15
+        mov.l   r6,@-r15
+        mov.l   r7,@-r15
+        bsr     hg_fx
         nop
-        bsr     hg_fx               ! then the HADOUGUN effects (once a frame)
+        mov.l   @r15+,r7
+        mov.l   @r15+,r6
+        mov.l   @r15+,r5
+        mov.l   @r15+,r4
+        bsr     hg_spr              ! then the ship over them
         nop
         add     #12,r15
         mov.l   @r15+,r11
