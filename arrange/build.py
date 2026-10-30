@@ -240,15 +240,15 @@ def bar_inc():
                     w = ((r >> 3) << 10) | ((g >> 3) << 5) | (b_ >> 3)
                     vram[(vx + xx, vy + yy)] = (w | 0x8000) if al else 0
     # HADOUGUN stock icons (data/hadougun.gif, the user's own art) 17 x 20, as
-    # four 9 x 3-cell strips (1..4 icons, left-aligned, 1 px apart) for the
-    # lower left of the text layer: char HADOU_CHAR + (n - 1) * 32 + row * 9 + col
+    # four 9 x 3-cell strips (1..4 icons, right-aligned, 1 px apart) for the
+    # lower right of the text layer: char HADOU_CHAR + (n - 1) * 32 + row * 9 + col
     ic = Image.open(os.path.join(HERE, "data", "hadougun.gif")).convert("RGBA")
     ic = ic.crop(ic.getbbox()).resize((17, 20), Image.LANCZOS)
     ic.putalpha(ic.split()[3].point(lambda v: 255 if v > 110 else 0))
     for n in range(1, 5):
         strip = Image.new("RGBA", (72, 24), (0, 0, 0, 0))
         for i in range(n):
-            strip.alpha_composite(ic, (1 + i * 18, 0))
+            strip.alpha_composite(ic, (72 - 2 - (i + 1) * 18 + 1, 24 - 4 - 20))
         for t in range(27):
             k = HADOU_CHAR + (n - 1) * 32 + t
             tc, tr = t % 9, t // 9

@@ -91,7 +91,7 @@
         .set    VAR_HOBJ,   0x0C7E01EC      ! (u32) enemy the head is stuck to, 0 = flying
         .set    VAR_HSTK,   0x0C7E01F0      ! (word) frames stuck
         .set    VAR_HNSEG,  0x0C7E01F2      ! (word) trail segments dropped
-        .set    HG_CHARGE,  120             ! frames to bring the options to the front
+        .set    HG_CHARGE,  60              ! frames (1 s) to bring the options to the front
         .set    VAR_HFRM,   0x0C7E01F4      ! (u32) frame counter for the aim line dots
         .set    HG_FLIP,    0x80000000      ! sprite flip for the aim lines (point them up)
         .set    VAR_MODEAPP,0x0C7E01C8      ! (combined build) 1 = the Rosy Arrange code changes are in the program
@@ -4286,8 +4286,8 @@ nfs_str:    .asciz  "NOT FOR SALE"
         .ifndef STANDALONE
 !------------------------------------------------------------------
 ! hadou_hud (combined, Rosy's Arrange play, every frame): HADOUGUN stock. A
-! lost life adds one, up to HADOU_MAX. Shown as 1..4 icons in the lower left
-! of the text layer (rows 7..5, cols 0..8: chars HADOU_CHR + (n-1) x 32 +
+! lost life adds one, up to HADOU_MAX. Shown as 1..4 icons in the lower right
+! of the text layer (rows 2..0, cols 21..29: chars HADOU_CHR + (n-1) x 32 +
 ! row x 9 + col). Cells are only rewritten (rows marked dirty) on a change.
 !------------------------------------------------------------------
 hadou_hud:
@@ -4315,7 +4315,7 @@ hadou_hud:
 .Lhh_show:
         mov.b   @r3,r0
         extu.b  r0,r5               ! r5 = count
-        mov.l   LHH_cell,r1         ! row 7, col 0
+        mov.l   LHH_cell,r1         ! row 2, col 21
         mov.l   LHH_dirty,r6        ! DIRTY + 7
         mov.w   WHH_chr,r7
         mov     r5,r0
@@ -4364,8 +4364,8 @@ WHH_back:   .word -0x80 - 9 * 4
         .align 2
 LHH_p1:     .long P1
 LHH_var:    .long VAR_HADOU
-LHH_cell:   .long TEXT + 7 * 0x80 + 0 * 4
-LHH_dirty:  .long DIRTY + 7
+LHH_cell:   .long TEXT + 2 * 0x80 + 21 * 4
+LHH_dirty:  .long DIRTY + 2
 LHH_tint:   .long 0x80808000
         .endif
 
@@ -4527,6 +4527,9 @@ hg_logic:
         mov.l   @(16,r10),r1        ! VAR_HOBJ
         tst     r1,r1
         bt      .Lhq_fly
+        mov     r1,r0
+        cmp/eq  #-1,r0              ! -1: the head is gone (never read through it:
+        bt      .Lhq_trail          ! a misaligned read crashes the real SH-3)
         mov.w   @r1,r0              ! stuck: follow it while it lives
         tst     r0,r0
         bt      .Lhq_unstick
@@ -4740,9 +4743,9 @@ hg_logic:
 hg_setang:
         mov.b   @(1,r8),r0
         extu.b  r0,r5               ! t
-        mov.l   WG2_inv,r0          ! 65536 / 120
+        mov.l   WG2_inv,r0          ! 65536 / HG_CHARGE
         mulu.w  r0,r5
-        sts     macl,r5             ! t * 546
+        sts     macl,r5             ! t * 65536 / HG_CHARGE
         mov.l   LG2_opt,r1
         mov     r8,r2
         add     #2,r2               ! VAR_HGO
@@ -4778,7 +4781,7 @@ WG2_cc:     .long 0xCC
 WG2_192:    .long 192
 WG2_1024:   .long 1024
 WG2_90:     .long 0x90
-WG2_inv:    .long 546
+WG2_inv:    .long 65536 / HG_CHARGE
 WG2_stick:  .long HG_STICK
 WG2_twelfth:.long 0x1556
         .align 2
@@ -4834,8 +4837,9 @@ hg_pdraw:
         bra     .Lpd_l2
         nop
 .Lpd_lines:
-        mov.b   @(1,r8),r0          ! charging: grow with the charge (t + 8)
+        mov.b   @(1,r8),r0          ! charging: grow with the charge (2 t + 8)
         extu.b  r0,r9
+        add     r9,r9
         add     #8,r9
 .Lpd_l2:
         mov.l   LP_frame,r1         ! frame counter for the dot animation

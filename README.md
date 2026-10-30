@@ -31,7 +31,7 @@ I did all the testing and planning.
   - Arcade, Harder and Extended: ZAN sits under RK on the right, with the boss timer and health under it in place of the credit message.
   - Score Attack: no extra HUD, the game's own display is left as it is.
   - 2 players: ZAN, the boss timer and the rank meter are removed and the 2P score comes back.
-- **HADOUGUN (ROSY'S ARRANGE).** You start with 1 (shown as icons in the lower left), each death adds 1, up to 4. Pressing B still fires the rose cracker as before; keep holding B and your two options swing in front of the ship over 2 seconds while dotted aim lines grow from them. Let go after that and the HADOUGUN flies straight up, leaving a red trail that damages enemies and cancels bullets; the shot sticks to the first enemy it hits and keeps damaging it. Let go earlier and the options go back to your sides. Each shot uses one; with none left the options are gone until a death gives you one back. The HADOUGUN graphics come from your Ibara set (see below).
+- **HADOUGUN (ROSY'S ARRANGE).** You start with 1 (shown as icons in the lower right), each death adds 1, up to 4. Pressing B still fires the rose cracker as before; keep holding B and your two options swing in front of the ship over 1 second while dotted aim lines grow from them. Let go after that and the HADOUGUN flies straight up, leaving a red trail that damages enemies and cancels bullets; the shot sticks to the first enemy it hits and keeps damaging it. Let go earlier and the options go back to your sides. Each shot uses one; with none left the options are gone until a death gives you one back. The HADOUGUN graphics come from your Ibara set (see below).
 - **High scores.** The ranking table shows all 9 digits of the score (was 8), in every mode.
 - **Warning screen.** A notice that this project is unofficial and not affiliated with, endorsed by or authorized by CAVE, then `HAVE FUN!!!`, with `2026/10/30 ROSY FUTURE` at the bottom.
 - **Title footer.** `SALE BY AMI` is replaced by `NOT FOR SALE`.
@@ -42,7 +42,7 @@ I did all the testing and planning.
 |---|---|
 | Original `pinkswts_u4` (required) | `5d812c9e` |
 | Ibara `u2` from `ibara.zip` (MAME set `ibarao`, required) | `55840976` |
-| Patched `pinkswtsrf_u4` | `e911cbfb` |
+| Patched `pinkswtsrf_u4` | `e137d7d5` |
 
 Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics are read from Ibara's `u2` while patching (only the few sprite frames it uses; nothing from Ibara is stored in this repository). Only the u4 changes: the patched program is saved as `pinkswtsrf_u4` in `pinkswtsrf.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsrf.zip` with `Pink Sweets Rosy Future.mra` (in [`mister/`](mister/), also offered by both patchers).
 
@@ -50,7 +50,7 @@ Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics 
 
 Open the **[Pink Sweets Forever Patcher](https://iamthechuckster.github.io/Pink_Sweets_Forever/)** and drop in `pinkswts.zip` and `ibara.zip` together (the sets' files only, no subfolders). Loose `pinkswts_u4` and Ibara `u2` files work too.
 
-The page checks that `pinkswts_u4` is the original and that the result is `e911cbfb` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
+The page checks that `pinkswts_u4` is the original and that the result is `e137d7d5` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
 
 ### Python patcher
 
