@@ -4509,7 +4509,7 @@ LHH_tint:   .long 0x80808000
         .set    HG_BALLR,   40              ! the red ball cancels bullets this close (px)
         .set    HG_STRONG,  10              ! the head sticks only to enemies with more HP
         .set    HG_HALFW,   20              ! half width of the trail for hits (px)
-        .set    HG_HIT,     16              ! head hit distance (px)
+        .set    HG_HIT,     32              ! head stick distance (px)
         .set    HG_BANK,    0xFF0           ! bank ids for our two VRAM pages
 
 ! hg_logic (from magnet, every Rosy Arrange real-play frame)
@@ -4767,12 +4767,9 @@ hg_shot:
         mov.l   LG2_enemy,r11
         mov     #0,r9
 .Lhq_hit:
-        mov.l   @r11,r0             ! alive, can be hit, HP left
-        tst     r0,r0
-        bt      .Lhq_hnext
-        mov.l   LG2_nohit,r1
-        tst     r1,r0
-        bf      .Lhq_hnext
+        mov.l   @r11,r0             ! alive and strong (it may still be unhittable,
+        tst     r0,r0               ! e.g. a boss flying in: the ball sits on it,
+        bt      .Lhq_hnext          ! and the game's damage routine ignores it until then)
         mov.l   WG2_44,r0           ! strong enough to stick to (weak ones:
         mov.w   @(r0,r11),r0        ! the head goes on, the trail kills them)
         mov     #HG_STRONG,r1
