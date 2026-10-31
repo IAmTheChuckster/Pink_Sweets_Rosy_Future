@@ -4506,6 +4506,7 @@ LHH_tint:   .long 0x80808000
         .set    HG_DMG,     1               ! trail damage per hit
         .set    HG_HDMG,    1               ! stuck ball damage per hit
         .set    HG_RATE,    12              ! frames between HADOUGUN hits on one enemy
+        .set    HG_BALLR,   40              ! the red ball cancels bullets this close (px)
         .set    HG_STRONG,  10              ! the head sticks only to enemies with more HP
         .set    HG_HALFW,   20              ! half width of the trail for hits (px)
         .set    HG_HIT,     16              ! head hit distance (px)
@@ -4805,6 +4806,22 @@ hg_shot:
         cmp/eq  r0,r9
         bf      .Lhq_hit
 .Lhq_trail:
+        mov.l   @(16,r10),r0        ! the red ball (stuck or fading) cancels
+        tst     r0,r0               ! the bullets that touch it too
+        bt      .Lhq_nob
+        cmp/eq  #-1,r0
+        bt      .Lhq_nob
+        mov.l   @(8,r10),r6
+        mov.l   LG2_ball,r8
+        mov     r6,r7
+        sub     r8,r6
+        add     r8,r7
+        mov.l   @(12,r10),r11
+        mov.l   r10,@-r15
+        bsr     hg_bcan
+        nop
+        mov.l   @r15+,r10
+.Lhq_nob:
         bsr     hg_puffs
         nop
         ! trail segments follow the head up the column (one every 12 px)
@@ -4883,6 +4900,29 @@ hg_shot:
         mov.l   WG2_192,r0
         cmp/eq  r0,r9
         bf      .Lhq_en
+        mov.l   LG2_halfw,r8        ! bullets in the trail column
+        bsr     hg_bcan
+        nop
+.Lhs_out:
+        lds.l   @r15+,pr
+        rts
+        nop
+.Lhq_out:
+        mov.l   @r15+,r11
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+
+
+
+! hg_bcan (hg_shot): cancel the bullets in a box: up axis r6..r7, across
+! r11 +- r8 (16.16). Each one pops out a medal and a tick-point, as with the
+! rose cracker. Uses r0-r7, r9, r10.
+hg_bcan:
+        sts.l   pr,@-r15
         ! bullets in the column: the game's live-bullet list is a stack of
         ! pointers from @0x0C106BF8 up to @0x0C5C178C (walked top down, as
         ! the game does, so removals during the walk are safe)
@@ -4892,7 +4932,7 @@ hg_shot:
         mov.l   LG2_bbase,r0
         mov.l   @r0,r0
         cmp/hi  r0,r9
-        bf      .Lhs_out
+        bf      .Lbc_out
         add     #-4,r9
         mov.l   @r9,r10
         mov.l   @r10,r0             ! a live bullet (bit 31) that can be
@@ -4918,8 +4958,7 @@ hg_shot:
         bt      .Lhq_blabs
         neg     r0,r0
 .Lhq_blabs:
-        mov.l   LG2_halfw,r1
-        cmp/hi  r1,r0
+        cmp/hi  r8,r0
         bt      .Lhq_blnext
         mov.l   r9,@-r15
         mov.l   r6,@-r15
@@ -4945,19 +4984,10 @@ hg_shot:
 .Lhq_blnext:
         bra     .Lhq_bl
         nop
-.Lhs_out:
+.Lbc_out:
         lds.l   @r15+,pr
         rts
         nop
-.Lhq_out:
-        mov.l   @r15+,r11
-        mov.l   @r15+,r10
-        mov.l   @r15+,r9
-        mov.l   @r15+,r8
-        lds.l   @r15+,pr
-        rts
-        nop
-
 
 ! hg_setang: option angles from VAR_HGT (0 = own angle, HG_CHARGE = front).
 ! r8 -> VAR_HGS. Uses r0..r3, r5, r6.
@@ -5035,6 +5065,7 @@ LG2_qpush:  .long q_push
 LG2_btop:   .long 0x0C5C178C
 LG2_bbase:  .long 0x0C106BF8
 LG2_bcan:   .long 0x00100000
+LG2_ball:   .long HG_BALLR << 16
 LG2_tick:   .long tick_crk
 
 ! hg_dmg: HADOUGUN damage r7 to enemy r5 (index), at most once every HG_RATE
