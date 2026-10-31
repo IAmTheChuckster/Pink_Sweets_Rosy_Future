@@ -1,7 +1,7 @@
 # Pink Sweets Rosy Future
 
 ## To Do
-1. fix hadougun
+1. fix hadougun (in the middle of investigation, will need to resume after i get credits)
 2. add skills
 
 A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
