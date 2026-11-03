@@ -1,12 +1,11 @@
 # Pink Sweets Rosy Future
+A patch for `Pink Sweets: Ibara Sorekara (Japan, 2006/04/06 MASTER VER....)`<br>
+This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
 
 ## To Do
 1. fix hadougun (in the middle of investigation, will need to resume after i get credits)
 2. add skills
-
-A patch for **Pink Sweets: Ibara Sorekara** (2006/04/06 MASTER VER....)<br>
-This repository holds only source, tools and notes. **No ROM data is included**; you patch your own legally owned dump.
-
+ 
 ## About this project
 Why did I make this? Because it's fun and for my own personal research to see the capabilities of Claude.<br>
 While Claude was used I put effort in making sure there are balanced gameplay.<br>
