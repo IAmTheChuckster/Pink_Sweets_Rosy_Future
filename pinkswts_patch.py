@@ -3,7 +3,7 @@
 Pink Sweets Rosy Future - u4 patcher (Python 3, standard library only)
 
     python3 pinkswts_patch.py pinkswts.zip ibara.zip         -> writes pinkswtsrf_u4 next to pinkswts.zip
-    python3 pinkswts_patch.py pinkswts.zip ibara.zip --zip   -> also writes pinkswtsrf.zip and Pink_Sweets_Rosy_Future.mra
+    python3 pinkswts_patch.py pinkswts.zip ibara.zip --zip   -> also writes pinkswtsrf.zip and Pink Sweets Rosy Future.mra
     python3 pinkswts_patch.py pinkswts_u4 u2                 -> loose files (Ibara's u2) work too
     python3 pinkswts_patch.py pinkswts.zip ibara.zip -o OUT  -> choose the output file
 
@@ -185,7 +185,7 @@ def main():
             for i in zi.infolist():
                 if i.filename==name: zo.writestr("pinkswtsrf_u4", out)
                 else: zo.writestr(i, zi.read(i.filename))
-        md=os.path.join(dd,"Pink_Sweets_Rosy_Future.mra")
+        md=os.path.join(dd,"Pink Sweets Rosy Future.mra")
         open(md,"w",encoding="utf-8").write(MRA)
         print("wrote "+zd); print("wrote "+md)
 
