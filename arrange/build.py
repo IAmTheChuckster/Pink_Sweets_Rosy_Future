@@ -430,7 +430,7 @@ def _warning_rf(block):
          "associated intellectual property remain with their respective "
          "rights holders.")
     lines = [("  " + l).ljust(30) for l in textwrap.wrap(t, 26)] + [" " * 30, "HAVE FUN!!!".center(30)]
-    lines += [" " * 30] * (13 - len(lines)) + ["2026/10/30 ROSY FUTURE".center(30)]
+    lines += [" " * 30] * (13 - len(lines)) + ["2026/11/7 ROSY FUTURE".center(30)]
     assert len(lines) == 14 and all(len(x) == 30 for x in lines)
     return (block, b"".join(x.encode() + b"\0" for x in lines))
 
