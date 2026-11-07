@@ -43,7 +43,7 @@ Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics 
 
 ### Web patcher
 
-Open the **[Pink Sweets Forever Patcher](https://iamthechuckster.github.io/Pink_Sweets_Forever/)** and drop in `pinkswts.zip` and `ibara.zip` together (the sets' files only, no subfolders). Loose `pinkswts_u4` and Ibara `u2` files work too.
+Open the **[Pink Sweets Rosy Future Patcher](https://iamthechuckster.github.io/Pink_Sweets_Rosy_Future/)** and drop in `pinkswts.zip` and `ibara.zip` together (the sets' files only, no subfolders). Loose `pinkswts_u4` and Ibara `u2` files work too.
 
 The page checks that `pinkswts_u4` is the original and that the result is `d351bd1b` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
 
