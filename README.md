@@ -21,6 +21,7 @@ I did all the testing and planning.
   - ROSY'S ARRANGE plays **Pink Sweets Rosy Arrange** (1 player): Start goes to its own How to Play page, then the usual character select. It uses the Rosy Arrange rules and HUD (TYPE, RANK, rose cracker meter that fills from tick-points and shield cancels, weak/full rose cracker with a 2-second cooldown, flower chain, D or Start to change shot type). Differences from the standalone Rosy Arrange: extends follow the DIP setting (a lipstick 1UP drops from the top at each extend score), each extend raises RANK by 5, each death lowers it by 3, and the cracker flowers' pickup sound is 50% louder. See the [Rosy Arrange README](https://github.com/IAmTheChuckster/Pink-Sweets-Rosy-Arrange) for the full rules. In ROSY'S ARRANGE the boss/midboss timer sits in the top right under the RANK value, with the boss health shown as a bar under it (white outline; green above 30 health, yellow from 30, red at 15 and below, with the remaining health counting down 15 ... 1 inside the bar); it refills for each new phase. The other four modes play exactly as before.
   - Move the arrow with the joystick and press Start. The menu and **PRESS START** sit higher on the screen (blank row between them), clear of the countdown.
   - Harder, Extended and Score Attack are unlocked, so the button codes aren't needed.
+- **DIP SWITCH SETTING: rosy's arrange extends.** A new item under "extend" (same options: NO EXTRA, 1000000p to 9000000p each, or the "... only" variants) used only by ROSY'S ARRANGE. The default is 1000000p each. The other four modes keep using the original "extend". It is saved with the other settings; "load default setting" does not reset it, so change it by hand.
 - **HUD layout.**
   - Arcade, Harder and Extended: ZAN sits under RK on the right, with the boss timer and health under it in place of the credit message.
   - Score Attack: no extra HUD, the game's own display is left as it is.
@@ -36,7 +37,7 @@ I did all the testing and planning.
 |---|---|
 | Original `pinkswts_u4` (required) | `5d812c9e` |
 | Ibara `u2` from `ibara.zip` (MAME set `ibarao`, required) | `55840976` |
-| Patched `pinkswtsrf_u4` | `d48c4d23` |
+| Patched `pinkswtsrf_u4` | `d351bd1b` |
 
 Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics are read from Ibara's `u2` while patching (only the few sprite frames it uses; nothing from Ibara is stored in this repository). Only the u4 changes: the patched program is saved as `pinkswtsrf_u4` in `pinkswtsrf.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsrf.zip` with `Pink Sweets Rosy Future.mra` (in [`mister/`](mister/), also offered by both patchers).
 
@@ -44,7 +45,7 @@ Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics 
 
 Open the **[Pink Sweets Forever Patcher](https://iamthechuckster.github.io/Pink_Sweets_Forever/)** and drop in `pinkswts.zip` and `ibara.zip` together (the sets' files only, no subfolders). Loose `pinkswts_u4` and Ibara `u2` files work too.
 
-The page checks that `pinkswts_u4` is the original and that the result is `d48c4d23` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
+The page checks that `pinkswts_u4` is the original and that the result is `d351bd1b` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
 
 ### Python patcher
 

@@ -442,6 +442,26 @@ COMBO_PATCHES += [
     (0x0C06E77C, "nfs_str"),
 ]
 
+# DIP SWITCH SETTING: new item 19 "rosy's arrange extends" (after "extend").
+# Rows of the items below it move down (new line 12 + its value on 11);
+# player counts 9, ranking save 7, load default 5, save 3, exit 1.
+COMBO_PATCHES += [
+    (0x0C105A9C + 14, bytes([9, 7, 5, 3, 1, 12])),      # row table, items 14..19
+    (0x0C105CE4 + 20, bytes([5])),                      # fixed labels: load default setting,
+    (0x0C105CE4 + 28, bytes([3])),                      #   save,
+    (0x0C105CE4 + 36, bytes([1])),                      #   exit
+    (0x0C105AB0 + 19, bytes([18])),                     # item 19: same range as extend (0..18)
+    (0x0C066778, "dip_varptr"),                         # variable pointers (20 entries, was 19)
+    (0x0C0667B0, "arr_dip_wrap"),                       # the line after "player counts" also draws item 19
+] + [
+    # cursor order ... extend (13) -> item 19 -> player counts (14) ...
+    p for t in range(9) for p in (
+        (0x0C105AEC + 0x28 * t + 14, bytes([19])),          # up from player counts
+        (0x0C105AEC + 0x28 * t + 19, bytes([13])),          # up from item 19
+        (0x0C105AEC + 0x28 * t + 20 + 13, bytes([19])),     # down from extend
+        (0x0C105AEC + 0x28 * t + 39, bytes([14])))          # down from item 19
+]
+
 # Rosy Future's own title-menu routine (u4 0x100498, run from ROM) draws the
 # five menu lines; its literals are patched in the u4 (offset, old, new):
 # menu two rows higher (rows 24..20, was 22..18) so PRESS START (row 18) and

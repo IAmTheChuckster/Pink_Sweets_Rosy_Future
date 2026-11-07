@@ -102,6 +102,8 @@
         .set    VAR_SHIPA,  0x0C7E05A0      ! the ship's sprite call: r4..r7, 3 stack args
         .set    VAR_LATEON, 0x0C7E05BE      ! (u8) hg_late ran lately (2, counted down per kept ship call); +1 = ship call kept
         .set    VAR_HUI,    0x0C7E01F8      ! HADOUGUN graphics upload: next region (HG_NREG = done)
+        .set    VAR_ARRXI,  0x0C7E01FD      ! (u8, combined) 1 = "rosy's arrange extends" has been read from the saved settings
+        .set    VAR_EFFEXT, 0x0C7E01FC      ! (u8, combined) extend setting the game starts with (the DIP one, or "rosy's arrange extends")
         .set    VAR_HUR,    0x0C7E01FA      ! (word) ... next row of it
         .set    VAR_BHOLD,  0x0C7E01F9      ! frames B has been held (with HADOUGUN stock)
         .set    HG_TAP,     15              ! a B tap (cracker) is shorter than this; longer charges
@@ -219,6 +221,9 @@ title_menu5:
         mov.l   r9,@-r15
         mov.l   L_sel,r8
         .ifndef STANDALONE
+        mov.l   L_effext,r0         ! which extend setting the game starts with
+        jsr     @r0
+        nop
         mov.l   L_rfmenu,r0         ! Rosy Future's menu: cursor, mode, VAR_FLAG, text
         jsr     @r0
         nop
@@ -227,6 +232,7 @@ title_menu5:
         nop
         .align 2
 L_rfmenu:   .long RF_MENU
+L_effext:   .long arr_effext
         .endif
         .ifdef  STANDALONE
         mov     #4,r9               ! standalone: always ROSY ARRANGE, no menu
@@ -5825,6 +5831,213 @@ LF_puff:    .long VAR_PUFF
 LF_rnd:     .long VAR_PUFF + HG_NPUFF * 8
 LF_mul:     .long 1103515245
 
+        .endif
+
+        .ifndef STANDALONE
+!==================================================================
+! DIP SWITCH SETTING: new item 19 "rosy's arrange extends" (same values as
+! "extend": 0 NO EXTRA, 1..9 = 1000000p..9000000p each, 10..18 = ... only).
+! It lives in byte 0x13 of the game's settings (variables 0x0C3B0A84.., saved as
+! the 96-byte EEPROM image at 0x0C3AE474; byte 0x13 is never used), so the game's own
+! save writes it to the EEPROM and its boot load brings it back (0xFF = blank = 1).
+! In ROSY'S ARRANGE the game starts with this setting instead of "extend".
+!==================================================================
+        .set    DIP_ARRX,   0x0C3AE487
+        .set    DIP_EXT,    0x0C3B0A7C
+
+! arr_effext: title_menu5, every frame (r0-r2 only). VAR_EFFEXT = the setting
+! the game's start-of-game routine (literal 0x0C067048) reads as "extend".
+arr_effext:
+        sts.l   pr,@-r15
+        bsr     arr_arrx_init
+        nop
+        mov.l   LZ_flag,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bt      .Le_dip             ! another mode: the game's own extend
+        mov.l   LZ_arrx,r1
+        mov.b   @r1,r0
+        extu.b  r0,r0
+        mov     #18,r2
+        cmp/hi  r2,r0
+        bf      .Le_set             ! 0..18
+        bra     .Le_set
+        mov     #1,r0               ! blank: 1000000p each
+.Le_dip:
+        mov.l   LZ_dext,r1
+        mov.b   @r1,r0
+.Le_set:
+        mov.l   LZ_eff,r1
+        mov.b   r0,@r1
+        ! what the game's start-of-game routine (0x0C066FD6) computes from "extend":
+        ! first extend score -> 0x0C5C009C, next -> 0x0C4AFAF0 (the same score for
+        ! "p.EACH", 1,000,000,000 = never again for "p.ONLY")
+        extu.b  r0,r0
+        shll2   r0
+        mov.l   LZ_stab,r1
+        mov.l   @(r0,r1),r2
+        mov.l   LZ_etab,r1
+        mov.l   @(r0,r1),r1
+        mov.l   LZ_c9c,r0
+        mov.l   r2,@r0
+        tst     r1,r1
+        bf      .Le_each
+        mov.l   LZ_bil,r2
+.Le_each:
+        mov.l   LZ_afa,r0
+        mov.l   r2,@r0
+        lds.l   @r15+,pr
+        rts
+        nop
+
+! arr_arrx_init: once after power-on, item 19 takes the value the game loaded
+! from the EEPROM (its copy of the saved settings at 0x0C4AFAF4, byte 0x13), 1 if blank.
+arr_arrx_init:
+        mov.l   LZ_ixf,r1
+        mov.b   @r1,r0
+        tst     r0,r0
+        bf      .Lai_done
+        mov     #1,r0
+        mov.b   r0,@r1
+        mov.l   LZ_mir,r1
+        mov.b   @r1,r0
+        extu.b  r0,r0
+        mov     #18,r2
+        cmp/hi  r2,r0
+        bf      .Lai_set
+        mov     #1,r0               ! blank: 1000000p each
+.Lai_set:
+        mov.l   LZ_arrx,r1
+        mov.b   r0,@r1
+.Lai_done:
+        rts
+        nop
+        .align 2
+LZ_flag:    .long VAR_FLAG
+LZ_arrx:    .long DIP_ARRX
+LZ_dext:    .long DIP_EXT
+LZ_eff:     .long VAR_EFFEXT
+LZ_ixf:     .long VAR_ARRXI
+LZ_stab:    .long 0x0C105214
+LZ_etab:    .long 0x0C105260
+LZ_c9c:     .long 0x0C5C009C
+LZ_afa:     .long 0x0C4AFAF0
+LZ_bil:     .long 1000000000
+LZ_mir:     .long 0x0C4AFAF4 + 0x13
+
+! arr_dip_wrap: replaces the call of the game's "player counts" line
+! (r4 = row, r5 = column): draws that, then the new item.
+arr_dip_wrap:
+        sts.l   pr,@-r15
+        mov.l   LD_orig,r0
+        jsr     @r0
+        nop
+        mov.l   LD_row,r1
+        mov.b   @r1,r4              ! row of item 19
+        bsr     arr_dip_draw
+        mov     #3,r5
+        lds.l   @r15+,pr
+        rts
+        nop
+
+! arr_dip_draw: r4 = row, r5 = column. The label, and the value on the row below.
+arr_dip_draw:
+        sts.l   pr,@-r15
+        mov.l   r8,@-r15
+        mov.l   r9,@-r15
+        mov.l   r10,@-r15
+        mov     r4,r10
+        mov     r5,r9
+        bsr     arr_arrx_init
+        nop
+        mov.l   LD_arrx,r8
+        mov.b   @r8,r0
+        extu.b  r0,r0
+        mov     #18,r1
+        cmp/hi  r1,r0
+        bf      .Ldd_ok
+        mov     #1,r0               ! blank / not set yet: 1000000p each
+        mov.b   r0,@r8
+.Ldd_ok:
+        mov.l   LD_print,r3
+        mov.l   LD_lbl,r4
+        mov     r10,r5
+        mov     r9,r6
+        mov.l   LD_white,r7
+        jsr     @r3
+        nop
+        add     #-1,r10             ! value: the row below, 3 columns in
+        add     #3,r9
+        mov.b   @r8,r0
+        extu.b  r0,r0
+        tst     r0,r0
+        bf      .Ldd_num
+        mov.l   LD_print,r3
+        mov.l   LD_noext,r4
+        mov     r10,r5
+        mov     r9,r6
+        mov.l   LD_green,r7
+        jsr     @r3
+        nop
+        bra     .Ldd_end
+        nop
+.Ldd_num:
+        mov     r0,r2
+        shll2   r2
+        mov.l   LD_score,r1
+        add     r2,r1
+        mov.l   @r1,r4              ! 1000000 .. 9000000
+        mov.l   LD_num,r3
+        mov     r10,r5
+        mov     r9,r6
+        mov.l   LD_green,r7
+        jsr     @r3
+        nop
+        mov.b   @r8,r0
+        extu.b  r0,r0
+        shll2   r0
+        mov.l   LD_each,r1
+        add     r0,r1
+        mov.l   @r1,r1              ! 1 = "p.EACH", 0 = "p.ONLY"
+        mov.l   LD_str,r4
+        tst     r1,r1
+        bt      .Ldd_s
+        add     #9,r4
+.Ldd_s:
+        mov.l   LD_print,r3
+        add     #7,r9
+        mov     r10,r5
+        mov     r9,r6
+        mov.l   LD_green,r7
+        jsr     @r3
+        nop
+.Ldd_end:
+        mov.l   @r15+,r10
+        mov.l   @r15+,r9
+        mov.l   @r15+,r8
+        lds.l   @r15+,pr
+        rts
+        nop
+        .align 2
+LD_arrx:    .long DIP_ARRX
+LD_orig:    .long 0x0C067490
+LD_row:     .long 0x0C105A9C + 19
+LD_print:   .long 0x0C062980
+LD_num:     .long 0x0C075AF0
+LD_lbl:     .long dip_label
+LD_white:   .long 0x80808000
+LD_green:   .long 0x40C04000
+LD_noext:   .long 0x0C105F18
+LD_str:     .long 0x0C105F21
+LD_score:   .long 0x0C105214
+LD_each:    .long 0x0C105260
+dip_label:  .asciz "rosy's arrange extends"
+        .align 2
+! variable pointers of the DIP items 0..19 (the game's table 0x0C105A50 has 19)
+dip_varptr:
+        .long   0x0C5C026A, 0x0C5C0098, 0x0C4B01C8, 0x0C5C1708, 0x0C5C0099, 0x0C4B01C9, 0x0C5C1709
+        .long   0x0C5C0130, 0x0C5C1702, 0x0C5C177E, 0x0C4165BC, 0x0C3B0AF8, 0x0C3B62A4, DIP_EXT
+        .long   0x0C3B298B, 0x0C4ACB52, 0, 0, 0, DIP_ARRX
         .endif
 
         .ifndef STANDALONE
