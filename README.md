@@ -59,6 +59,8 @@ python3 pinkswts_patch.py pinkswts.zip ibara.zip -o OUT   # choose the output fi
 
 MAME will warn about a wrong checksum for the u4 (rename `pinkswtsrf_u4` to `pinkswts_u4` in a `pinkswts` set for MAME). That's expected. On real hardware, keep a backup of your original u4 before flashing.
 
+## Skills
+
 ## Testing
 This patch was tested with MAME 0.289 and [CV1k core for the MiSTer FPGA by Raki](https://www.patreon.com/c/ikamusume/posts)<br>
 It may even work on a PCB but do so on your own risk.
