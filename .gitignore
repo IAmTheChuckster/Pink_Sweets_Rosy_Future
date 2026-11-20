@@ -1,2 +1,6 @@
+roms/
+work/
+*.zip
+*_u4
 __pycache__/
-*.pyc
+.images/

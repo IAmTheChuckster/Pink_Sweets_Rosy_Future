@@ -2,10 +2,10 @@
 """
 Pink Sweets Rosy Future - u4 patcher (Python 3, standard library only)
 
-    python3 pinkswts_patch.py pinkswts.zip ibara.zip         -> writes pinkswtsrf_u4 next to pinkswts.zip
-    python3 pinkswts_patch.py pinkswts.zip ibara.zip --zip   -> also writes pinkswtsrf.zip and Pink Sweets Rosy Future.mra
-    python3 pinkswts_patch.py pinkswts_u4 u2                 -> loose files (Ibara's u2) work too
-    python3 pinkswts_patch.py pinkswts.zip ibara.zip -o OUT  -> choose the output file
+    python3 patch.py pinkswts.zip ibara.zip         -> writes pinkswtsrf_u4 next to pinkswts.zip
+    python3 patch.py pinkswts.zip ibara.zip --zip   -> also writes pinkswtsrf.zip and Pink Sweets Rosy Future.mra
+    python3 patch.py pinkswts_u4 u2                 -> loose files (Ibara's u2) work too
+    python3 patch.py pinkswts.zip ibara.zip -o OUT  -> choose the output file
 
 ibara.zip is your Ibara set (MAME ibarao; its u2 has CRC32 55840976): ROSY'S ARRANGE's
 HADOUGUN uses graphics read from it at patch time. No Ibara data is stored here either.
@@ -181,10 +181,14 @@ def main():
     dst=a.output or dflt; open(dst,"wb").write(out); print("wrote %s (CRC d351bd1b)" % dst)
     if a.zip:
         dd=os.path.dirname(os.path.abspath(a.input)); zd=os.path.join(dd,"pinkswtsrf.zip")
-        with zipfile.ZipFile(a.input) as zi, zipfile.ZipFile(zd,"w",zipfile.ZIP_DEFLATED) as zo:
-            for i in zi.infolist():
-                if i.filename==name: zo.writestr("pinkswtsrf_u4", out)
-                else: zo.writestr(i, zi.read(i.filename))
+        keep={0xA2FA5363:"pinkswts_u2",0x4B82D250:"u23",0xE93F0627:"u24"}   # only what the MRA uses
+        with zipfile.ZipFile(a.input) as zi:
+            got={keep[i.CRC]:i for i in zi.infolist() if i.CRC in keep}
+            miss=[n for n in keep.values() if n not in got]
+            if miss: sys.exit("error: %s not found in %s (needed for pinkswtsrf.zip)" % (", ".join(miss), a.input))
+            with zipfile.ZipFile(zd,"w",zipfile.ZIP_DEFLATED) as zo:
+                for n in ("pinkswts_u2","u23","u24"): zo.writestr(n, zi.read(got[n].filename))
+                zo.writestr("pinkswtsrf_u4", out)
         md=os.path.join(dd,"Pink Sweets Rosy Future.mra")
         open(md,"w",encoding="utf-8").write(MRA)
         print("wrote "+zd); print("wrote "+md)

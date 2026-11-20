@@ -37,25 +37,25 @@ I did all the testing and planning.
 |---|---|
 | Original `pinkswts_u4` (required) | `5d812c9e` |
 | Ibara `u2` from `ibara.zip` (MAME set `ibarao`, required) | `55840976` |
-| Patched `pinkswtsrf_u4` | `d351bd1b` |
+| Patched `pinkswtsrf_u4` (Build 35) | `d351bd1b` |
 
-Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics are read from Ibara's `u2` while patching (only the few sprite frames it uses; nothing from Ibara is stored in this repository). Only the u4 changes: the patched program is saved as `pinkswtsrf_u4` in `pinkswtsrf.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. For MiSTer (ikacore CV1k), use `pinkswtsrf.zip` with `Pink Sweets Rosy Future.mra` (in [`mister/`](mister/), also offered by both patchers).
+Both your `pinkswts.zip` and your `ibara.zip` are needed: the HADOUGUN graphics are read from Ibara's `u2` while patching (only the few sprite frames it uses; nothing from Ibara is stored in this repository). Only the u4 changes: the patched program is saved as `pinkswtsrf_u4` in `pinkswtsrf.zip`. `pinkswts_u2`, `u23` and `u24` stay as they are. `pinkswtsrf.zip` holds only those four files, so clone folders from a merged `pinkswts.zip` are left out. For MiSTer (ikacore CV1k), use `pinkswtsrf.zip` with `Pink Sweets Rosy Future.mra` (in [`mister/`](mister/), also offered by both patchers).
 
 ### Web patcher
 
-Open the **[Pink Sweets Rosy Future Patcher](https://iamthechuckster.github.io/Pink_Sweets_Rosy_Future/)** and drop in `pinkswts.zip` and `ibara.zip` together (the sets' files only, no subfolders). Loose `pinkswts_u4` and Ibara `u2` files work too.
+Open the **[Pink Sweets Rosy Future Patcher](https://iamthechuckster.github.io/Pink_Sweets_Rosy_Future/)** drop `pinkswts.zip` in box 1 and `ibara.zip` in box 2 (the sets' files only, no subfolders). A loose Ibara `u2` also works in box 2.
 
-The page checks that `pinkswts_u4` is the original and that the result is `d351bd1b` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`), `pinkswtsrf_u4.zip`, the raw `pinkswtsrf_u4` and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
+The page checks that `pinkswts_u4` is the original and that the result is `d351bd1b` before offering `pinkswtsrf.zip` (full set with the patched `pinkswtsrf_u4`) and `Pink Sweets Rosy Future.mra`. Everything runs in your browser and nothing is uploaded.
 
 ### Python patcher
 
 Python 3, standard library only. Repacking the game program takes about a minute.
 
 ```
-python3 pinkswts_patch.py pinkswts.zip ibara.zip          # writes pinkswtsrf_u4 next to pinkswts.zip
-python3 pinkswts_patch.py pinkswts.zip ibara.zip --zip    # also writes pinkswtsrf.zip and Pink Sweets Rosy Future.mra
-python3 pinkswts_patch.py pinkswts_u4 u2                  # loose files (u2 = Ibara's) -> pinkswtsrf_u4
-python3 pinkswts_patch.py pinkswts.zip ibara.zip -o OUT   # choose the output file
+python3 patch.py pinkswts.zip ibara.zip          # writes pinkswtsrf_u4 next to pinkswts.zip
+python3 patch.py pinkswts.zip ibara.zip --zip    # also writes pinkswtsrf.zip and Pink Sweets Rosy Future.mra
+python3 patch.py pinkswts_u4 u2                  # loose files (u2 = Ibara's) -> pinkswtsrf_u4
+python3 patch.py pinkswts.zip ibara.zip -o OUT   # choose the output file
 ```
 
 MAME will warn about a wrong checksum for the u4 (rename `pinkswtsrf_u4` to `pinkswts_u4` in a `pinkswts` set for MAME). That's expected. On real hardware, keep a backup of your original u4 before flashing.

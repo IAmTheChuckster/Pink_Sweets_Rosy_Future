@@ -67,31 +67,39 @@ button.secondary { background: transparent; color: var(--accent); font-family: v
 button:disabled { opacity: .45; cursor: not-allowed; }
 button:focus-visible, .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
-.adds { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
-.adds b { font-weight: 600; }
 footer { color: var(--muted); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Pink Sweets · Cave CV1000 · Rosy Future</div>
+    <div class="eyebrow">Pink Sweets · Cave CV1000 · Rosy Future · Build <span id="build">35</span></div>
     <h1>Pink Sweets Patcher</h1>
     <div class="privacy"><span class="dot"></span>Everything runs in your browser. Your ROMs are never uploaded.</div>
   </header>
 
   <section class="card">
-    <h2><span class="n">1</span>Load your romset</h2>
-    <label class="drop" id="drop">
-      <input type="file" id="file" multiple>
-      <strong>Drop pinkswts.zip and ibara.zip here, or click to choose both.</strong>
-      <div class="sub">ibara.zip is your Ibara set (MAME ibarao); ROSY'S ARRANGE's HADOUGUN uses graphics read from it. Loose pinkswts_u4 and u2 files work too.</div>
+    <h2><span class="n">1</span>Load pinkswts.zip</h2>
+    <label class="drop" id="dropPink">
+      <input type="file" id="filePink" accept=".zip">
+      <strong>Drop pinkswts.zip here, or click to choose it.</strong>
+      <div class="sub">Your Pink Sweets set (MAME pinkswts) with the original pinkswts_u4.</div>
     </label>
-    <div class="loaded" id="loaded">No files loaded.</div>
+    <div class="loaded" id="loadedPink">No file loaded.</div>
   </section>
 
   <section class="card">
-    <h2><span class="n">2</span>Check files</h2>
+    <h2><span class="n">2</span>Load ibara.zip</h2>
+    <label class="drop" id="dropIbara">
+      <input type="file" id="fileIbara">
+      <strong>Drop ibara.zip here, or click to choose it.</strong>
+      <div class="sub">Your Ibara set (MAME ibarao). ROSY'S ARRANGE's HADOUGUN uses graphics read from it. Its loose u2 file works too.</div>
+    </label>
+    <div class="loaded" id="loadedIbara">No file loaded.</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span>Check files</h2>
     <div class="tablebox"><table>
       <thead><tr><th>File</th><th>Size</th><th>Expected CRC32</th><th>Found CRC32</th><th>Status</th></tr></thead>
       <tbody id="inrows"></tbody>
@@ -100,7 +108,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
   </section>
 
   <section class="card">
-    <h2><span class="n">3</span>Download patched files</h2>
+    <h2><span class="n">4</span>Download patched files</h2>
     <div class="progress" aria-hidden="true"><div id="bar"></div></div>
     <div class="tablebox"><table>
       <thead><tr><th>File</th><th>Expected CRC32</th><th>Built CRC32</th><th>Status</th></tr></thead>
@@ -108,20 +116,10 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
     </table></div>
     <div class="buttons">
       <button id="btnSet" disabled>Download patched pinkswtsrf.zip</button>
-      <button id="btnU4zip" class="secondary" disabled>pinkswtsrf_u4.zip</button>
-      <button id="btnU4" class="secondary" disabled hidden>pinkswtsrf_u4</button>
       <button id="btnMra" class="secondary">Pink Sweets Rosy Future.mra</button>
     </div>
-    <p class="hint" id="dlhint">pinkswtsrf.zip is the full set with the patched program as pinkswtsrf_u4; pinkswts_u2, u23 and u24 are copied unchanged. For MiSTer (ikacore CV1k), put pinkswtsrf.zip in your games folder and use Pink Sweets Rosy Future.mra. For the real board, flash pinkswtsrf_u4 as u4. Back up your original u4 first.</p>
+    <p class="hint">pinkswtsrf.zip is the full set with the patched program as pinkswtsrf_u4; pinkswts_u2, u23 and u24 are copied unchanged; nothing else from your zip (such as clone folders) is included. For MiSTer (ikacore CV1k), put pinkswtsrf.zip in your games folder and use Pink Sweets Rosy Future.mra. For the real board, flash pinkswtsrf_u4 from the zip as u4. Back up your original u4 first.</p>
     <p class="msg" id="dlmsg"></p>
-    <ul class="adds">
-      <li><b>ZAN counter:</b> the hidden 1UP counter (2500, kills lower it, bomb kills raise it), showing READY at 0.</li>
-      <li><b>Boss and midboss timer</b> and <b>boss health</b> in every boss and midboss fight, stages 1 to 7.</li>
-      <li><b>Rank meter</b> as RK with two decimals (100.00 is the hardest) in place of the 2P score.</li>
-      <li><b>Title menu</b> after a coin is in: ARCADE, HARDER, EXTENDED, SCORE ATTACK and ROSY'S ARRANGE (plays as Arcade for now). No button codes needed.</li>
-      <li><b>HUD layout:</b> ZAN, timer and health on the right under RK in Arcade, Harder and Extended; none in Score Attack or with 2 players.</li>
-      <li><b>Warning screen:</b> PINK SWEETS ROSY FUTURE, CAVE OWNS!!! and 2026/10/15 ROSY FUTURE.</li>
-    </ul>
   </section>
 
   <footer>No ROM data is included in this page. It only adds the patch code to the dump you supply.</footer>
@@ -331,7 +329,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
     return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
   }
 
-  const state = { entries: null, u4Entry: null, loose: {}, patched: null, ibara: null };
+  const state = { entries: null, u4Entry: null, keep: {}, loose: {}, patched: null, ibara: null };
   const IBARA = "u2 (ibara.zip)";
   function takeIbara(u2) {   // keep only the rows the patch needs
     state.ibara = IBARA_FILL.map(([uo, o2, n, rows]) => {
@@ -363,7 +361,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
   function resetOut() {
     state.patched = null; bar(0);
     $("outcrc").textContent = "—"; $("outstatus").className = "pill"; $("outstatus").textContent = "Waiting";
-    ["btnSet", "btnU4zip", "btnU4"].forEach(id => $(id).disabled = true);
+    $("btnSet").disabled = true;
     $("checkmsg").textContent = ""; $("checkmsg").className = "msg"; $("dlmsg").textContent = "";
   }
   function fail(msg) { $("checkmsg").textContent = msg; $("checkmsg").className = "msg err"; bar(0); }
@@ -389,9 +387,8 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
 
   async function load(files) {
     resetOut();
-    state.entries = null; state.u4Entry = null; state.loose = {}; state.ibara = null;
+    state.entries = null; state.u4Entry = null; state.keep = {}; state.loose = {}; state.ibara = null;
     const found = {}; let u4data = null;
-    $("loaded").textContent = files.map(f => f.name + " (" + fmtSize(f.size) + ")").join(", ");
     try {
       for (const f of files) {
         const head = new Uint8Array(await f.slice(0, 4).arrayBuffer());
@@ -412,7 +409,7 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
           for (const e of entries) {
             const nm = base(e.name);
             const spec = SET.find(s => s.name === nm) || SET.find(s => s.size === e.usize && (s.crc === e.crc || (s.name === "pinkswts_u4" && e.crc === PATCHED_CRC)));
-            if (spec && !found[spec.name]) { found[spec.name] = { size: e.usize, crc: e.crc }; if (spec.name === "pinkswts_u4") state.u4Entry = e; }
+            if (spec && !found[spec.name]) { found[spec.name] = { size: e.usize, crc: e.crc }; if (spec.name === "pinkswts_u4") state.u4Entry = e; else if (e.crc === spec.crc && e.usize === spec.size) state.keep[spec.name] = e; }
           }
           if (state.u4Entry) {
             const e = state.u4Entry;
@@ -435,8 +432,8 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
       }
     } catch (err) { renderIn(found); return fail(err.message); }
     renderIn(found); bar(.5);
-    if (!u4data) return fail("No pinkswts_u4 found. Drop pinkswts.zip or the pinkswts_u4 file from it.");
-    if (!state.ibara) return fail(found[IBARA] ? "Ibara's u2 has the wrong CRC; this patch needs the MAME ibarao set (u2 CRC 55840976)." : "Ibara's u2 wasn't found. Drop ibara.zip (MAME ibarao) together with pinkswts.zip.");
+    if (!u4data || !state.entries) return fail(pinkFiles.length ? "No pinkswts_u4 found in that file. Drop pinkswts.zip in box 1." : "Waiting for pinkswts.zip in box 1.");
+    if (!state.ibara) return fail(found[IBARA] ? "Ibara's u2 has the wrong CRC; this patch needs the MAME ibarao set (u2 CRC 55840976)." : ibaraFiles.length ? "Ibara's u2 wasn't found in that file. Drop ibara.zip (MAME ibarao) in box 2." : "Waiting for ibara.zip in box 2.");
     if (u4data.length !== U4_SIZE) return fail("pinkswts_u4 is " + u4data.length.toLocaleString() + " bytes; the original is 2,097,152 bytes.");
     const c = crc32(u4data);
     if (c === PATCHED_CRC) return fail("This pinkswts_u4 is already patched (CRC d351bd1b). Load the original dump instead.");
@@ -450,12 +447,12 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
     const oc = crc32(out); bar(1);
     $("outcrc").textContent = hex(oc);
     if (oc !== PATCHED_CRC) { $("outstatus").className = "pill err"; $("outstatus").textContent = "Wrong CRC"; return fail("The patched pinkswts_u4 came out with CRC " + hex(oc) + " instead of d351bd1b, so nothing was offered for download."); }
-    $("outstatus").className = "pill ok"; $("outstatus").textContent = "Matches";
+    $("outstatus").className = "pill ok"; $("outstatus").textContent = "Matches Build " + $("build").textContent;
     $("checkmsg").textContent = "Original pinkswts_u4 found (CRC 5d812c9e) and patched.";
     state.patched = out;
-    $("btnU4zip").disabled = false; $("btnU4").disabled = false;
-    $("btnSet").disabled = !state.entries;
-    if (!state.entries) $("dlmsg").textContent = "The full pinkswtsrf.zip needs the original zip as input; you loaded a loose pinkswts_u4, so only the pinkswtsrf_u4 download is available.";
+    const miss = ["pinkswts_u2", "u23", "u24"].filter(n => !state.keep[n]);
+    if (miss.length) return fail("Patched OK, but pinkswtsrf.zip also needs " + miss.join(", ") + " with the right CRC from pinkswts.zip.");
+    $("btnSet").disabled = false;
   }
 
   const dosNow = () => ({ time: 0, date: (2026 - 1980) << 9 | 10 << 5 | 14 });
@@ -468,15 +465,15 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
   }
   async function makeSet() {
     const u4 = await u4Item(), items = [];
-    for (const e of state.entries) {
-      if (e === state.u4Entry) items.push(u4);
-      else items.push({ nameBytes: e.nameBytes, method: e.method, crc: e.crc, csize: e.csize, usize: e.usize, time: e.time, date: e.date, data: e.raw() });
+    for (const n of ["pinkswts_u2", "u23", "u24"]) {   // only the files the MRA uses (no clone folders)
+      const e = state.keep[n];
+      items.push({ nameBytes: new TextEncoder().encode(n), method: e.method, crc: e.crc, csize: e.csize, usize: e.usize, time: e.time, date: e.date, data: e.raw() });
     }
+    items.push(u4);
     return buildZip(items);
   }
 
   const inClaude = !!(window.claude && window.claude.use);
-  if (!inClaude) $("btnU4").hidden = false;
   async function save(filename, blob) {
     $("dlmsg").textContent = "";
     if (inClaude) {
@@ -491,16 +488,24 @@ footer { color: var(--muted); font-size: 13px; text-align: center; }
     }
   }
   $("btnSet").onclick = async () => { $("btnSet").disabled = true; try { await save("pinkswtsrf.zip", await makeSet()); } finally { $("btnSet").disabled = false; } };
-  $("btnU4zip").onclick = async () => save("pinkswtsrf_u4.zip", buildZip([await u4Item()]));
-  $("btnU4").onclick = () => save("pinkswtsrf_u4", new Blob([state.patched], { type: "application/octet-stream" }));
   const MRA = "<!--\n  ikacore_CV1k MRA - Pink Sweets Rosy Future (2026/11/7 ROSY FUTURE).\n\n  Rom order is deliberate - DDR3 first, index 0 LAST.  Index 0's download\n  is what finally releases the CPU, so every image is in place before the\n  core runs, and any spurious run in an inter-rom gap is wiped by the u4\n  download's own reset hold.\n\n    <rom index=\"1\">  DDR3 0x34400000  u2  NAND dump incl. spare (132 MiB,\n                                          exact size)\n    <rom index=\"2\">  DDR3 0x3C800000  u23 YMZ chip 0, zero-padded to the\n                                          8 MiB slot\n                     DDR3 0x3D000000  u24 YMZ chip 1, zero-padded to the\n                                          8 MiB slot\n    <rom index=\"0\">  ioctl stream     u4  program NOR x2 (2 MiB file listed\n                                          twice = the undecoded-A21 mirror\n                                          the boot ROM expects)\n-->\n<misterromdescription>\n    <about author=\"ika-musume\" source=\"https://github.com/ika-musume/ikacore_CV1k\"/>\n    <name>Pink Sweets Rosy Future (2026/11/7 ROSY FUTURE)</name>\n    <setname>pinkswtsrf</setname>\n    <year>2026</year>\n    <manufacturer>Cave (AMI license)</manufacturer>\n    <category>Shooter</category>\n    <rbf>ikacore_CV1k</rbf>\n\n    <rom index=\"1\" address=\"0x34400000\" zip=\"pinkswtsrf.zip\" md5=\"none\">\n        <part name=\"pinkswts_u2\" crc=\"a2fa5363\"/>\n    </rom>\n\n    <rom index=\"2\" address=\"0x3C800000\" zip=\"pinkswtsrf.zip\" md5=\"none\">\n        <part name=\"u23\" crc=\"4b82d250\"/>\n        <part repeat=\"0x400000\">00</part>\n        <part name=\"u24\" crc=\"e93f0627\"/>\n        <part repeat=\"0x400000\">00</part>\n    </rom>\n\n    <nvram index=\"3\" size=\"135680\"/>\n\n    <rom index=\"0\" zip=\"pinkswtsrf.zip\" md5=\"none\">\n        <part name=\"pinkswtsrf_u4\" crc=\"d351bd1b\"/>\n        <part name=\"pinkswtsrf_u4\" crc=\"d351bd1b\"/>\n    </rom>\n\n    <buttons names=\"Slow,Option/Rose Cracker,Rapid Shot,Type Change,Start,Coin,Test,Service,Save State\" default=\"A,B,X,Y,Start,R,L,Select\"/>\n</misterromdescription>\n";
   $("btnMra").onclick = () => save("Pink Sweets Rosy Future.mra", new Blob([MRA], { type: "application/xml" }));
 
-  const drop = $("drop"), input = $("file");
-  input.onchange = () => input.files.length && load([...input.files]);
-  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
-  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
-  drop.addEventListener("drop", e => { if (e.dataTransfer.files.length) load([...e.dataTransfer.files]); });
+  // Two boxes: 1 = pinkswts.zip, 2 = ibara.zip. Patching runs once both hold a file.
+  let pinkFiles = [], ibaraFiles = [];
+  function setBox(which, files) {
+    files = files.slice(0, 1);
+    if (which === "Pink") pinkFiles = files; else ibaraFiles = files;
+    $("loaded" + which).textContent = files.length ? files[0].name + " (" + fmtSize(files[0].size) + ")" : "No file loaded.";
+    load([...pinkFiles, ...ibaraFiles]);
+  }
+  for (const which of ["Pink", "Ibara"]) {
+    const drop = $("drop" + which), input = $("file" + which);
+    input.onchange = () => input.files.length && setBox(which, [...input.files]);
+    ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", e => { if (e.dataTransfer.files.length) setBox(which, [...e.dataTransfer.files]); });
+  }
 })();
 </script>
 

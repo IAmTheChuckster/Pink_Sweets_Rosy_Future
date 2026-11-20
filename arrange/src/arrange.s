@@ -985,7 +985,6 @@ L3_bkills:  .long 0x0C3AE102
 L3_zantxt:  .long TEXT + 38*0x80 + 19*4
 L3_tattr:   .long 0x80808000
 L3_ctime:   .long VAR_CTIME
-L3_cfrm:    .long VAR_CFRM
 L3_pops:    .long arr_pops
 L3_bscan:   .long boss_scan
 L3_chtxt:   .long chain_txt
@@ -1570,7 +1569,6 @@ L8_crkbit:  .long 0x08000000
 L8_ticks:   .long VAR_TICKS
 L8_hold:    .long VAR_CRKHOLD
 L8_qb:      .long QBUF
-L8_boss:    .long VAR_BOSS
 L8_kpart:   .long VAR_KPART
 L8_kills:   .long VAR_KILLS
 L9_alloc:   .long 0x0C083620
@@ -2968,7 +2966,6 @@ arr_spr:
         bra     .Ls_orig
         lds.l   @r15+,pr
         .align 2
-LS_after:   .long 0x0C08833C, 0x0C0890B6, 0x0C089744, 0x0C0838DC
 LS_hgfx:    .long hg_fx
 LS_pdraw:   .long 0x0C07E7E2        ! return address of the ship's sprite call
 LS_odraw:   .long 0x0C0813CC        ! ... and of the options' sprite call
@@ -5029,12 +5026,9 @@ hg_setang:
         .align 2
 WG2_alive:  .long 0xFFFFCE00
 WG2_end:    .long HG_NSEG * 3 + HG_LIFE + 60
-WG2_4000:   .long 0x4000
 WG2_44:     .long 0x44
 WG2_cc:     .long 0xCC
 WG2_192:    .long 192
-WG2_1024:   .long 1024
-WG2_90:     .long 0x90
 WG2_inv:    .long 65536 / HG_CHARGE
 WG2_stick:  .long HG_STICK
 WG2_fade:   .long HG_STICK - HG_BFADE
@@ -5046,23 +5040,17 @@ LG2_prev:   .long VAR_PREV
 LG2_opt:    .long 0x0C453630
 LG2_stock:  .long VAR_HADOU
 LG2_ahead:  .long 32 << 16
-LG2_bx:     .long VAR_BX
 LG2_4:      .long 4 << 16
 LG2_8:      .long 8 << 16
 LG2_top:    .long HG_TOP << 16
 LG2_hit:    .long HG_HIT << 16
 LG2_enemy:  .long 0x0C416968
 LG2_halfw:  .long HG_HALFW << 16
-LG2_crkflag:.long 0xCC100000
-LG2_dmgfn:  .long 0x0C084F10
 LG2_cd:     .long VAR_HGCD
-LG2_bul:    .long 0x0C4541B4
 LG2_cancel: .long 0x0C088940
-LG2_puff:   .long VAR_PUFF
 LG2_shots:  .long VAR_SHOTS
 LG2_hfc:    .long VAR_HFC
 LG2_sndfn:  .long 0x0C08B050
-LG2_nohit:  .long 0x20000000
 LG2_bhold:  .long VAR_BHOLD
 LG2_qpush:  .long q_push
 LG2_btop:   .long 0x0C5C178C
@@ -5582,7 +5570,6 @@ WP_third:   .word 0x5556
 WP_8000:    .word 0x8000
 WP_life:    .word HG_LIFE
 WP_ff:      .word 0xFF
-WP_f0:      .word 0xF0
 WP_c0:      .word 0xC0
 WP_sixth:   .word 0x2AAB
 WP_stick:   .word HG_STICK
